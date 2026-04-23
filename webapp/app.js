@@ -58,7 +58,10 @@ const elements = {
   summaryReport: document.getElementById("summary-report"),
 
   facultyResultsMeta: document.getElementById("facultyResultsMeta"),
+  facultyFilterPills: document.getElementById("facultyFilterPills"),
   facultyResultsBody: document.getElementById("facultyResultsBody"),
+  crossFacultySection: document.getElementById("crossFacultySection"),
+  fileDetectionBanner: document.getElementById("fileDetectionBanner"),
 
   logConsole: document.getElementById("logConsole"),
 };
@@ -80,6 +83,7 @@ const latestResults = {
 
 let busy = false;
 let courseConfigRows = [];
+let activeFacultyFilter = "ALL";
 
 // ── Utility helpers ──────────────────────────────────────────────────────────
 
@@ -700,8 +704,19 @@ function summarizeUpload(payload, config = readConfig()) {
   const rows = Number(payload.rows_imported || 0);
   const assessmentRows = Number(payload.assessment_rows_imported || 0);
   const term = payload.term || config.term;
+  const source = payload.source_file ? ` Source: ${payload.source_file}.` : "";
+
+  if (Array.isArray(payload.faculties_detected) && payload.faculties_detected.length > 1) {
+    const breakdown = payload.rows_by_faculty
+      ? Object.entries(payload.rows_by_faculty)
+          .sort((a, b) => a[0].localeCompare(b[0]))
+          .map(([fac, n]) => `${fac}: ${n}`)
+          .join(", ")
+      : payload.faculties_detected.join(", ");
+    return `Auto-imported ${rows} rows (${assessmentRows} assessment) across ${payload.faculties_detected.length} faculties in term ${term}. Breakdown — ${breakdown}.${source}`;
+  }
+
   const program = payload.program || config.program;
-  const source = payload.source_file ? ` Source file: ${payload.source_file}.` : "";
   return `Imported ${rows} student grade rows and ${assessmentRows} assessment rows for ${program} in term ${term}.${source}`;
 }
 
@@ -752,6 +767,159 @@ function summarizeReportNarrative(payload) {
   return clampText(reportText, 2200);
 }
 
+// ── File faculty detection ────────────────────────────────────────────────────
+
+async function detectFacultiesInFile(file) {
+  const rows = await readWorkbookRowsFromFile(file);
+  const counts = {};
+  for (const row of rows) {
+    let courseCode = normalizeCourseCode(
+      pickFirstValue(row, ["Course Code", "course_code", "CourseCode"])
+    );
+    if (!courseCode) {
+      courseCode = parseCourseFromSection(
+        pickFirstValue(row, ["Section", "section"])
+      ).course_code;
+    }
+    if (!courseCode) continue;
+
+    const faculty =
+      normalizeFaculty(pickFirstValue(row, ["Program", "Faculty", "program", "faculty"])) ||
+      guessFacultyFromCourseCode(courseCode);
+    if (faculty) counts[faculty] = (counts[faculty] || 0) + 1;
+  }
+  return counts;
+}
+
+function renderFileDetectionBanner(facultyCounts) {
+  const banner = elements.fileDetectionBanner;
+  if (!banner) return;
+
+  const entries = Object.entries(facultyCounts).sort((a, b) => a[0].localeCompare(b[0]));
+  if (!entries.length) {
+    banner.classList.add("hidden");
+    return;
+  }
+
+  const pills = entries
+    .map(
+      ([fac, count]) =>
+        `<span class="detection-pill">${escapeHtml(fac)}<em>${count} rows</em></span>`
+    )
+    .join("");
+
+  const multi = entries.length > 1;
+  banner.innerHTML = `
+    <span class="detection-icon">${multi ? "⚡" : "✓"}</span>
+    <span class="detection-label">${multi ? `${entries.length} faculties detected` : "1 faculty detected"}</span>
+    ${pills}
+    ${multi ? `<span class="detection-hint">Using AUTO mode will classify each row automatically.</span>` : ""}`;
+  banner.classList.remove("hidden");
+  banner.classList.toggle("detection-multi", multi);
+}
+
+// ── Cross-faculty helpers ─────────────────────────────────────────────────────
+
+function findCrossFacultyCourses(faculties) {
+  const map = {};
+  for (const f of faculties) {
+    for (const c of f.courses) {
+      if (!map[c.course_code]) map[c.course_code] = [];
+      map[c.course_code].push({ faculty: f.faculty, course: c });
+    }
+  }
+  return Object.entries(map)
+    .filter(([, entries]) => entries.length > 1)
+    .map(([courseCode, entries]) => ({ courseCode, entries }));
+}
+
+function renderCrossFacultyMatrix(crossCourses) {
+  const container = elements.crossFacultySection;
+  if (!container) return;
+
+  if (!crossCourses.length) {
+    container.innerHTML = "";
+    return;
+  }
+
+  const rowsHtml = crossCourses
+    .map(({ courseCode, entries }) => {
+      return entries
+        .map((e, i) => {
+          const c = e.course;
+          const statusTag = c.meets_threshold
+            ? `<span class="badge badge-success">ACHIEVED</span>`
+            : `<span class="badge badge-danger">NOT MET</span>`;
+          const avgDisplay =
+            c.average_score !== null && c.average_score !== undefined
+              ? `${Number(c.average_score).toFixed(1)}%`
+              : "—";
+          const courseCell =
+            i === 0
+              ? `<td class="cross-course-code" rowspan="${entries.length}">${escapeHtml(courseCode)}<span class="multi-faculty-badge">×${entries.length}</span></td>`
+              : "";
+          return `<tr class="${i === 0 ? "course-group-start" : "course-group-cont"}">
+            ${courseCell}
+            <td><span class="faculty-pill-sm">${escapeHtml(e.faculty)}</span></td>
+            <td>${escapeHtml(c.s_label || `S${c.chosen_s}`)}</td>
+            <td>${escapeHtml(c.chosen_metric)}</td>
+            <td>${avgDisplay}</td>
+            <td>${Number(c.attainment_rate).toFixed(1)}%</td>
+            <td>${statusTag}</td>
+          </tr>`;
+        })
+        .join("");
+    })
+    .join("");
+
+  container.innerHTML = `
+    <div class="cross-faculty-section">
+      <div class="cross-faculty-header">
+        <span class="cross-faculty-title">Cross-Faculty Courses</span>
+        <span class="cross-faculty-count">${crossCourses.length} course${crossCourses.length > 1 ? "s" : ""} shared across multiple faculties</span>
+      </div>
+      <div class="mapping-table-wrap">
+        <table class="mapping-table cross-faculty-table">
+          <thead>
+            <tr>
+              <th>Course</th>
+              <th>Faculty</th>
+              <th>S</th>
+              <th>Metric</th>
+              <th>Avg Score</th>
+              <th>Attainment %</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ── Faculty filter pills ──────────────────────────────────────────────────────
+
+function renderFacultyFilterPills(faculties) {
+  const container = elements.facultyFilterPills;
+  if (!container) return;
+
+  if (!faculties.length) {
+    container.classList.add("hidden");
+    return;
+  }
+
+  const allPill = `<button class="filter-pill${activeFacultyFilter === "ALL" ? " active" : ""}" data-faculty="ALL">All (${faculties.length})</button>`;
+  const facultyPills = faculties
+    .map(
+      (f) =>
+        `<button class="filter-pill${activeFacultyFilter === f.faculty ? " active" : ""}" data-faculty="${escapeHtml(f.faculty)}">${escapeHtml(f.faculty)} <em>${f.courses_total}</em></button>`
+    )
+    .join("");
+
+  container.innerHTML = `<span class="filter-label">Show:</span>${allPill}${facultyPills}`;
+  container.classList.remove("hidden");
+}
+
 // ── Faculty report display ────────────────────────────────────────────────────
 
 function renderFacultyResults(payload) {
@@ -761,17 +929,36 @@ function renderFacultyResults(payload) {
     elements.facultyResultsMeta.textContent =
       "Run the Faculty Report to see per-faculty, per-course S attainment results.";
     elements.facultyResultsBody.innerHTML = "";
+    if (elements.facultyFilterPills) elements.facultyFilterPills.classList.add("hidden");
+    if (elements.crossFacultySection) elements.crossFacultySection.innerHTML = "";
     return;
   }
 
+  const allFaculties = payload.faculties;
   const term = payload.term || "";
   const threshold = payload.threshold || 70;
   const computedAt = payload.computed_at ? formatTimestamp(payload.computed_at) : "";
 
+  // Build summary line
+  const totalCourses = allFaculties.reduce((s, f) => s + f.courses_total, 0);
+  const achievedCourses = allFaculties.reduce((s, f) => s + f.courses_achieved, 0);
   elements.facultyResultsMeta.textContent =
-    `Term: ${term}  |  Attainment threshold: ${threshold}%  |  Computed: ${computedAt}`;
+    `Term: ${term}  |  Threshold: ${threshold}%  |  ${allFaculties.length} facult${allFaculties.length === 1 ? "y" : "ies"}  |  ${achievedCourses}/${totalCourses} courses achieved  |  Computed: ${computedAt}`;
 
-  const sectionsHtml = payload.faculties
+  // Filter pills
+  renderFacultyFilterPills(allFaculties);
+
+  // Apply active filter
+  const visible =
+    activeFacultyFilter === "ALL"
+      ? allFaculties
+      : allFaculties.filter((f) => f.faculty === activeFacultyFilter);
+
+  // Find courses shared across ALL faculties (not just visible)
+  const crossCourses = findCrossFacultyCourses(allFaculties);
+
+  // Build per-faculty blocks
+  const sectionsHtml = visible
     .map((f) => {
       const complianceTag = f.compliant
         ? `<span class="badge badge-success">COMPLIANT</span>`
@@ -786,15 +973,20 @@ function renderFacultyResults(payload) {
             c.average_score !== null && c.average_score !== undefined
               ? `${Number(c.average_score).toFixed(1)}%`
               : "—";
+          // Mark cross-faculty courses
+          const isMultiFac = crossCourses.some((x) => x.courseCode === c.course_code);
+          const multiBadge = isMultiFac
+            ? `<span class="multi-faculty-badge" title="This course appears in multiple faculties">multi</span>`
+            : "";
           return `<tr>
-          <td>${escapeHtml(c.course_code)}</td>
-          <td>${escapeHtml(c.s_label || `S${c.chosen_s}`)}</td>
-          <td>${escapeHtml(c.chosen_metric)}</td>
-          <td>${avgDisplay}</td>
-          <td>${Number(c.attainment_rate).toFixed(1)}%</td>
-          <td>${c.students_attained} / ${c.students_assessed}</td>
-          <td>${statusTag}</td>
-        </tr>`;
+            <td>${escapeHtml(c.course_code)}${multiBadge}</td>
+            <td>${escapeHtml(c.s_label || `S${c.chosen_s}`)}</td>
+            <td>${escapeHtml(c.chosen_metric)}</td>
+            <td>${avgDisplay}</td>
+            <td>${Number(c.attainment_rate).toFixed(1)}%</td>
+            <td>${c.students_attained} / ${c.students_assessed}</td>
+            <td>${statusTag}</td>
+          </tr>`;
         })
         .join("");
 
@@ -826,6 +1018,9 @@ function renderFacultyResults(payload) {
     .join("");
 
   elements.facultyResultsBody.innerHTML = sectionsHtml;
+
+  // Cross-faculty matrix (always show full set, not filtered)
+  renderCrossFacultyMatrix(crossCourses);
 }
 
 // ── Output panel rendering ────────────────────────────────────────────────────
@@ -1005,7 +1200,16 @@ async function runUpload() {
   setOutput("upload", payload);
   setStepState("upload", "success", `HTTP ${result.status}`);
   elements.metricRows.textContent = String(payload.rows_imported ?? 0);
-  appendLog(`Upload complete. Rows imported: ${payload.rows_imported ?? 0}`, "ok");
+
+  if (Array.isArray(payload.faculties_detected) && payload.faculties_detected.length > 1) {
+    const breakdown = Object.entries(payload.rows_by_faculty || {})
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([fac, n]) => `${fac}:${n}`)
+      .join("  ");
+    appendLog(`Upload complete — AUTO mode. ${payload.rows_imported} rows across ${payload.faculties_detected.length} faculties. ${breakdown}`, "ok");
+  } else {
+    appendLog(`Upload complete. Rows imported: ${payload.rows_imported ?? 0}`, "ok");
+  }
   return payload;
 }
 
@@ -1391,6 +1595,40 @@ function wireEvents() {
   elements.clearLogsBtn.addEventListener("click", () => {
     elements.logConsole.textContent = "";
   });
+
+  // Faculty filter pill clicks
+  if (elements.facultyFilterPills) {
+    elements.facultyFilterPills.addEventListener("click", (e) => {
+      const pill = e.target.closest("[data-faculty]");
+      if (!pill) return;
+      activeFacultyFilter = pill.dataset.faculty;
+      renderFacultyResults(latestResults.facultyReport);
+    });
+  }
+
+  // File detection on select
+  if (elements.gradesFile) {
+    elements.gradesFile.addEventListener("change", async () => {
+      const file = elements.gradesFile.files?.[0];
+      if (!file) {
+        if (elements.fileDetectionBanner) elements.fileDetectionBanner.classList.add("hidden");
+        return;
+      }
+      try {
+        const counts = await detectFacultiesInFile(file);
+        renderFileDetectionBanner(counts);
+
+        // Auto-switch to AUTO mode if multiple faculties detected
+        const numFaculties = Object.keys(counts).length;
+        if (numFaculties > 1 && elements.program) {
+          elements.program.value = "AUTO";
+          appendLog(`Detected ${numFaculties} faculties in file — switched upload mode to AUTO.`, "info");
+        }
+      } catch {
+        if (elements.fileDetectionBanner) elements.fileDetectionBanner.classList.add("hidden");
+      }
+    });
+  }
 }
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────

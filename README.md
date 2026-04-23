@@ -1,113 +1,264 @@
-# ABET API Local Stack (n8n + Docker)
+# ABET Workflow Control Room
 
-This repository now includes a full local implementation foundation for the ABET API platform using:
+> Faculty-organized student-outcome attainment platform — n8n · PostgreSQL · Docker · Vanilla JS dashboard
 
-- n8n (workflow engine + webhooks)
-- Postgres (local database mirroring Supabase schema)
-- Docker Compose (one-command startup)
-- Reusable JS snippets for n8n Code nodes
-- Workflow blueprints for upload, attainment, at-risk, reporting, and weekly compliance checks
+---
 
-## What is already implemented
+## Architecture
 
-- Docker Compose stack for `n8n` and `postgres`
-- Custom n8n image with `xlsx` package enabled for Code node file parsing
-- SQL bootstrap scripts for:
-  - `student_grades`
-  - `so_mapping`
-  - `so_attainment`
-  - `upload_audit`
-- Starter SO seed data including `CSE251` from your attached CSV docs
-- Code snippets in `n8n/code` for:
-  - API key validation
-  - CSV/XLSX upload parsing and normalization
-  - SO attainment computation
-  - at-risk scoring
-  - OpenRouter prompt assembly + extraction
-  - weekly compliance summary
-- Node-by-node workflow blueprints in `n8n/workflow-blueprints`
-- Local helper scripts for start/stop/upload/test
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                        Browser Dashboard                        │
+│              webapp/  (Python http.server :8088)                │
+│   Upload │ Course Config │ Faculty Report │ At-Risk │ Narrative │
+└────────────────────────┬────────────────────────────────────────┘
+                         │ REST (x-api-key)
+┌────────────────────────▼────────────────────────────────────────┐
+│                     n8n  :5678  (Docker)                        │
+│  POST /upload            →  parse CSV/XLSX, classify per row    │
+│  GET|POST /course-config →  faculty × course × S × metric      │
+│  GET /faculty-report     →  per-faculty S attainment            │
+│  GET /at-risk            →  GPA / grade risk scoring            │
+│  POST /generate-report   →  OpenRouter LLM narrative            │
+│  GET|POST /so-mapping    →  legacy SO mapping CRUD              │
+└────────────────────────┬────────────────────────────────────────┘
+                         │ pg driver
+┌────────────────────────▼────────────────────────────────────────┐
+│                  PostgreSQL 16  :5432  (Docker)                 │
+│  student_grades · assessment_scores · course_faculty_config     │
+│  so_mapping · assessment_so_mapping · so_attainment             │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-## Quick start (Windows PowerShell)
+---
 
-Make sure Docker Desktop is installed and running before the next command.
+## Prerequisites
+
+| Tool | Version | Notes |
+| --- | --- | --- |
+| Docker Desktop | ≥ 4.x | Must be running before `docker compose up` |
+| Python | ≥ 3.8 | Only for the static dashboard server |
+| Git | any | For version control |
+
+---
+
+## Quick Start
+
+### 1 — Clone and configure
+
+```bash
+git clone https://github.com/<YOUR_USERNAME>/ABET.git
+cd ABET
+```
 
 ```powershell
-# From repository root
+# Windows PowerShell — copy the env template then fill in your keys
 Copy-Item .env.example .env
-.\scripts\start-local.ps1
+notepad .env
 ```
 
-Then open `http://localhost:5678` and sign in with your basic auth values from `.env`.
-
-## Build workflows in n8n
-
-Use these blueprint docs directly in the n8n UI:
-
-1. `n8n/workflow-blueprints/01-upload-workflow.md`
-2. `n8n/workflow-blueprints/02-so-attainment-workflow.md`
-3. `n8n/workflow-blueprints/03-at-risk-workflow.md`
-4. `n8n/workflow-blueprints/04-report-workflow.md`
-5. `n8n/workflow-blueprints/05-weekly-check-workflow.md`
-
-Paste JS from matching files in `n8n/code` into the Code nodes.
-
-## Local API smoke tests
-
-After workflows are built and activated:
+### 2 — Start the backend (n8n + PostgreSQL)
 
 ```powershell
-.\scripts\upload-sample.ps1
-.\scripts\test-api.ps1
-# include report generation only after setting OPENROUTER_API_KEY
-.\scripts\test-api.ps1 -IncludeReport
+# Build the custom n8n image and start both containers
+docker compose up --build -d
 ```
 
-## Workflow web app dashboard
-
-A frontend dashboard is now included in `webapp/` to run and visualize the full n8n flow using REST:
-
-- Upload Grades (`POST /upload`)
-- Professor SO Mapping (`GET /so-mapping`, `POST /so-mapping`)
-- SO Attainment (`GET /so-attainment`)
-- At-Risk (`GET /at-risk`)
-- Report Generation (`POST /generate-report`)
-
-Start it with:
+Wait ~15 seconds for PostgreSQL to finish its init scripts, then verify:
 
 ```powershell
-.\scripts\start-webapp.ps1
+docker compose ps
+# abet-n8n       Up
+# abet-postgres  Up (healthy)
 ```
 
-Or from cmd:
-
-```cmd
-scripts\start-webapp.cmd
-```
-
-Then open:
-
-`http://localhost:8088`
-
-Use the UI to configure API key, term/program, choose the grades file, and run either each step individually or the full workflow.
-
-The dashboard also includes a Professor SO Mapping table where instructors can:
-
-- load existing course-to-SO mappings for a selected program,
-- extract course codes from the currently selected grades file,
-- check/uncheck SO1-SO6 per course,
-- and save updates back to the API.
-
-## Stop stack
+### 3 — Import and activate all n8n workflows
 
 ```powershell
-.\scripts\stop-local.ps1
-# or remove containers + volumes
-.\scripts\stop-local.ps1 --volumes
+powershell -ExecutionPolicy Bypass -File .\scripts\register-upload-bootstrap.ps1
 ```
 
-## Notes
+This imports every `n8n/workflows/*.workflow.json`, publishes them, and restarts n8n.
 
-- `.env` is ignored by git.
-- Update `OPENROUTER_API_KEY` in `.env` before testing report generation.
-- For production deployment, move this to a VPS/domain and switch `WEBHOOK_URL` to HTTPS.
+### 4 — Start the dashboard
+
+```powershell
+# Option A — helper script
+powershell -ExecutionPolicy Bypass -File .\scripts\start-webapp.ps1
+
+# Option B — direct Python command
+python -m http.server 8088 --directory webapp
+```
+
+Open **<http://localhost:8088>** in your browser.
+
+---
+
+## Using the Dashboard
+
+### Step-by-step workflow
+
+```text
+ ① Upload Grades  →  ② Configure Courses  →  ③ Faculty Report  →  ④ At-Risk  →  ⑤ Generate Report
+```
+
+#### ① Upload Grades
+
+- Pick a CSV or XLSX file from your institution's grade export.
+- Set **Upload Faculty** to **AUTO — detect per row** (default).
+  The dashboard scans the file instantly and shows a detection banner, e.g.:
+  `⚡ 3 faculties detected · AIE 18 rows · CSE 24 rows · CE 12 rows`
+- Click **Upload**. Each row is tagged to the correct faculty automatically.
+
+#### ② Configure Courses
+
+In the **Faculty Course Configuration** table, for every course assign:
+
+| Column | Description |
+| --- | --- |
+| Faculty | AIE · AIS · CE · CSE · ADDA · CONS |
+| Course Code | e.g. `AIE111`, `CSE251` |
+| Chosen S | Which student outcome (S1–S6) this course targets |
+| Metric Type | QUIZ · ASSIGNMENT · EXAM · LAB · PROJECT |
+
+Use **Extract From File** to auto-populate from the uploaded file, adjust per course, then click **Save Config**.
+
+#### ③ Faculty Report
+
+Click **Faculty Report**. Results appear in a dedicated section organised by faculty:
+
+- Per-faculty header — `AIE — 4/5 achieved · avg 78.2% · [COMPLIANT]`
+- Per-course row — course code · S · metric · avg score · attainment % · student count · status
+- **Filter pills** (`All · AIE · CSE · CE`) focus on one faculty instantly
+- **Cross-Faculty Matrix** (amber section) — appears automatically when the same course is configured in more than one faculty, showing a side-by-side comparison
+
+#### ④ At-Risk
+
+Flags students by GPA threshold, fail grades, and repeat flags.
+Set **At-Risk Threshold (GPA)** (default 2.0) and click **At-Risk**.
+
+#### ⑤ Generate Report
+
+Click **Generate Report** for an LLM-written ABET narrative via OpenRouter.
+Requires `OPENROUTER_API_KEY` in `.env`.
+
+#### Export PDF
+
+Click **Export PDF Report** at any point — generates a multi-page A4 PDF with:
+
+- Executive snapshot
+- One table per faculty
+- At-risk student list
+- Accreditation narrative
+
+---
+
+## Environment Variables (`.env`)
+
+```ini
+# n8n
+N8N_PORT=5678
+WEBHOOK_URL=http://localhost:5678
+N8N_BASIC_AUTH_USER=admin
+N8N_BASIC_AUTH_PASSWORD=change_me
+
+# Security
+ABET_API_KEY=change_me_to_a_strong_key
+
+# AI narrative (optional)
+OPENROUTER_API_KEY=sk-or-v1-...
+OPENROUTER_MODEL=openai/gpt-4o-mini
+
+# PostgreSQL
+POSTGRES_DB=abet_db
+POSTGRES_USER=abet_user
+POSTGRES_PASSWORD=change_me
+```
+
+> **Never commit `.env`** — it is listed in `.gitignore`.
+
+---
+
+## API Reference
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `POST` | `/webhook/upload` | Upload CSV/XLSX; `program=AUTO` classifies per row |
+| `GET` | `/webhook/course-config` | List faculty × course configurations |
+| `POST` | `/webhook/course-config` | Upsert faculty × course configurations |
+| `GET` | `/webhook/faculty-report` | Compute per-faculty, per-course S attainment |
+| `GET` | `/webhook/at-risk` | Score and rank at-risk students |
+| `POST` | `/webhook/generate-report` | Generate ABET narrative via LLM |
+| `GET` | `/webhook/so-mapping` | Legacy SO mapping read |
+| `POST` | `/webhook/so-mapping` | Legacy SO mapping write |
+
+All endpoints require the header `x-api-key: <ABET_API_KEY>`.
+
+---
+
+## Database Schema
+
+```sql
+student_grades          -- uploaded grade rows, one per student per course
+assessment_scores       -- individual assessment scores (quiz, assignment, …)
+course_faculty_config   -- faculty × course × chosen_s × chosen_metric
+so_mapping              -- legacy course-to-SO mapping
+assessment_so_mapping   -- assessment-level SO mapping
+so_attainment           -- cached attainment results
+upload_audit            -- upload history log
+```
+
+---
+
+## Project Structure
+
+```text
+ABET/
+├── docker/
+│   ├── n8n/Dockerfile                   # extends n8nio/n8n, adds xlsx + pg
+│   └── postgres/init/                   # SQL migrations (run on first start)
+│       ├── 001_schema.sql
+│       ├── 002_so_mapping_seed.sql
+│       ├── 003_assessment_support.sql
+│       └── 004_course_faculty_config.sql
+├── n8n/
+│   ├── code/                            # readable JS for each Code node
+│   └── workflows/                       # importable n8n workflow JSONs
+├── scripts/
+│   ├── start-local.ps1                  # docker compose up
+│   ├── start-webapp.ps1                 # python http.server
+│   ├── register-upload-bootstrap.ps1    # import + activate all workflows
+│   ├── stop-local.ps1                   # docker compose down
+│   └── test-api.ps1                     # endpoint smoke tests
+├── webapp/
+│   ├── index.html
+│   ├── app.js
+│   └── styles.css
+├── .env.example                         # template — copy to .env
+├── docker-compose.yml
+└── README.md
+```
+
+---
+
+## Stop / Tear Down
+
+```powershell
+# Stop containers, keep data volumes
+docker compose down
+
+# Stop containers AND wipe all database + n8n data
+docker compose down --volumes
+```
+
+---
+
+## Common Troubleshooting
+
+| Symptom | Fix |
+| --- | --- |
+| `abet-postgres` not healthy | Wait 20 s and re-run `docker compose ps` |
+| Workflow import fails | Check that Docker Desktop is using the Linux engine |
+| `x-api-key` rejected | Make sure `.env` `ABET_API_KEY` matches the key in the dashboard |
+| Faculty report returns empty | Upload grades first; check `course_faculty_config` has rows |
+| PDF blank narrative | Run Generate Report before exporting PDF |

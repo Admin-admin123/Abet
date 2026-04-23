@@ -46,7 +46,8 @@
           <label>
             Upload Faculty (for file upload)
             <select id="program">
-              <option value="CSE" selected>CSE</option>
+              <option value="AUTO" selected>AUTO — detect per row</option>
+              <option value="CSE">CSE</option>
               <option value="AIS">AIS</option>
               <option value="AIE">AIE</option>
               <option value="CE">CE</option>
@@ -78,6 +79,7 @@
             Upload Grades File
             <input id="gradesFile" type="file" accept=".csv,.xlsx,.xls" />
           </label>
+          <div id="fileDetectionBanner" class="file-detection-banner hidden"></div>
         </div>
 
         <div class="button-row">
@@ -193,7 +195,9 @@
         <p id="facultyResultsMeta" class="summary-meta">
           Run the Faculty Report to see per-faculty, per-course S attainment results.
         </p>
+        <div id="facultyFilterPills" class="faculty-filter-pills hidden"></div>
         <div id="facultyResultsBody"></div>
+        <div id="crossFacultySection"></div>
       </section>
 
       <!-- ── Executive Summary ───────────────────────────────────────────── -->
