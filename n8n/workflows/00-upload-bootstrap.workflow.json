@@ -1,0 +1,97 @@
+{
+    "id": "wf_upload_bootstrap_001",
+    "versionId": "wf_upload_bootstrap_001_v4",
+    "name": "ABET Upload API",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "upload",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "id": "1",
+        "name": "WebhookUpload",
+        "webhookId": "upload",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          260,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "const first=$input.first()||{json:{},binary:{}};const payload=first.json||{};const body=payload.body||payload;const headers=payload.headers||{};const expected=String($env.ABET_API_KEY||'my-secret-key-2026').trim();const incoming=String(headers['x-api-key']??headers['X-Api-Key']??'').trim();if(!incoming||incoming!==expected){return[{json:{status:'error',message:'Unauthorized: invalid x-api-key'}}];}const XLSX=require('xlsx');const {Client}=require('pg');const asText=(v)=>v===null||v===undefined?'':String(v).trim();const toFloatOrNull=(v)=>{if(v===null||v===undefined||v===''){return null;}const n=Number(v);return Number.isFinite(n)?n:null;};const toIntOrNull=(v)=>{if(v===null||v===undefined||v===''){return null;}const n=Number.parseInt(String(v),10);return Number.isFinite(n)?n:null;};const toScorePercent=(v)=>{if(v===null||v===undefined||v===''){return null;}const text=String(v).trim();if(!text){return null;}if(text.includes('/')){const parts=text.split('/').map((p)=>Number(String(p).trim()));if(parts.length===2&&Number.isFinite(parts[0])&&Number.isFinite(parts[1])&&parts[1]>0){return Math.max(0,Math.min(100,Math.round((parts[0]/parts[1])*10000)/100));}}const cleaned=text.endsWith('%')?text.slice(0,-1).trim():text;const numeric=Number(cleaned);if(!Number.isFinite(numeric)){return null;}const normalized=numeric<=1?numeric*100:numeric;return Math.max(0,Math.min(100,Math.round(normalized*100)/100));};const guessProgram=(courseCode,explicitProgram)=>{if(explicitProgram){return explicitProgram.toUpperCase();}const code=asText(courseCode).toUpperCase();if(code.startsWith('CSE')) return 'CSE';if(code.startsWith('AIS')) return 'AIS';if(code.startsWith('AIE')) return 'AIE';if(code.startsWith('CE')) return 'CE';if(code.startsWith('ADD')||code.startsWith('ARC')) return 'ADDA';if(code.startsWith('CON')) return 'CONS';return 'CSE';};const extractCourseCode=(sectionValue)=>{const section=asText(sectionValue);const open=section.lastIndexOf('(');const close=section.lastIndexOf(')');if(open>=0&&close>open){return section.slice(open+1,close).trim().toUpperCase();}return '';};const classifyAssessmentType=(assessmentName)=>{const name=String(assessmentName||'').trim().toLowerCase();if(!name||name==='final_grade') return 'COURSE';if(name.includes('quiz')) return 'QUIZ';if(name.includes('project')) return 'PROJECT';if(name.includes('assignment')||name.includes('homework')||name.includes('hw')) return 'ASSIGNMENT';if(name.includes('exam')||name.includes('midterm')||name.includes('final')) return 'EXAM';if(name.includes('lab')) return 'LAB';return 'OTHER';};const binary=first.binary||{};const binaryKey=Object.keys(binary)[0];if(!binaryKey){return[{json:{status:'error',message:'No file found. Send multipart/form-data with key file.'}}];}const file=binary[binaryKey];const fileName=asText(file.fileName||'upload');const mimeType=asText(file.mimeType).toLowerCase();const lowerFileName=fileName.toLowerCase();const term=asText(body.term||'2242');const fileType=asText(body.file_type||'grades').toLowerCase();const explicitProgram=asText(body.program||'').toUpperCase();let sourceBuffer;try{sourceBuffer=await this.helpers.getBinaryDataBuffer(0,binaryKey);}catch(_e){sourceBuffer=Buffer.from(file.data||'','base64');}let workbook;if(lowerFileName.endsWith('.csv')||mimeType.includes('csv')){workbook=XLSX.read(sourceBuffer.toString('utf8'),{type:'string'});}else if(lowerFileName.endsWith('.xlsx')||lowerFileName.endsWith('.xls')||mimeType.includes('spreadsheet')||mimeType.includes('excel')){workbook=XLSX.read(sourceBuffer,{type:'buffer'});}else{return[{json:{status:'error',message:`Unsupported file type for ${fileName}. Use CSV or XLSX.`}}];}const firstSheet=workbook.SheetNames[0];if(!firstSheet){return[{json:{status:'error',message:'Uploaded workbook has no sheets.'}}];}const worksheet=workbook.Sheets[firstSheet];const rawRows=XLSX.utils.sheet_to_json(worksheet,{defval:null,raw:false});const gradeRowMap=new Map();const assessmentRowMap=new Map();for(const row of rawRows){const cleanRow={};for(const [key,val] of Object.entries(row)){const cleanKey=asText(key);const normalizedKey=cleanKey&&cleanKey.charCodeAt(0)===65279?cleanKey.slice(1):cleanKey;cleanRow[normalizedKey]=val;}const studentName=asText(cleanRow.Student||cleanRow['Student Name']||cleanRow.Name);if(!studentName||studentName.toLowerCase().includes('points possible')){continue;}const studentId=asText(cleanRow['SIS User ID']||cleanRow['Student ID']||cleanRow.student_id||cleanRow.ID||cleanRow.id);if(!studentId){continue;}const courseCode=asText(cleanRow['Course Code']||extractCourseCode(cleanRow.Section||cleanRow.section)).toUpperCase();if(!courseCode){continue;}const finalGrade=asText(cleanRow['Final Grade']||cleanRow.Grade||cleanRow['Current Grade']).toUpperCase()||null;const program=guessProgram(courseCode,explicitProgram||asText(cleanRow['Academic Program']));const gradeKey=`${term}|${studentId}|${courseCode}`;if(!gradeRowMap.has(gradeKey)){gradeRowMap.set(gradeKey,{term,program,student_id:studentId,student_name:studentName,course_code:courseCode,grade:finalGrade,term_gpa:toFloatOrNull(cleanRow['Term GPA']),cumulative_gpa:toFloatOrNull(cleanRow['Cumulative GPA']),repeat_flag:asText(cleanRow.Repeat||cleanRow['Repeat Flag'])||null,units:toIntOrNull(cleanRow['Unit Taken']||cleanRow.Units||cleanRow.Unit),source_file:fileName,file_type:fileType});}else{const existing=gradeRowMap.get(gradeKey);if(!existing.grade&&finalGrade){existing.grade=finalGrade;}if(existing.term_gpa===null){existing.term_gpa=toFloatOrNull(cleanRow['Term GPA']);}if(existing.cumulative_gpa===null){existing.cumulative_gpa=toFloatOrNull(cleanRow['Cumulative GPA']);}if(!existing.repeat_flag){existing.repeat_flag=asText(cleanRow.Repeat||cleanRow['Repeat Flag'])||null;}if(existing.units===null){existing.units=toIntOrNull(cleanRow['Unit Taken']||cleanRow.Units||cleanRow.Unit);}}const assessmentName=asText(cleanRow['Assessment Name']||cleanRow['Assignment Name']||cleanRow.Assignment||cleanRow.Assessment||cleanRow.Item||cleanRow['Evaluation Item']||cleanRow.Task);const scorePercent=toScorePercent(cleanRow['Score %']??cleanRow['Score Percent']??cleanRow.Percentage??cleanRow.Score??cleanRow.Mark??cleanRow['Grade %']);if(assessmentName&&scorePercent!==null){const assessmentType=asText(cleanRow['Assessment Type']||cleanRow['Assignment Group']||cleanRow.Category||cleanRow.Type)||classifyAssessmentType(assessmentName);const assessmentKey=`${term}|${studentId}|${courseCode}|${assessmentName.toUpperCase()}`;assessmentRowMap.set(assessmentKey,{term,program,student_id:studentId,student_name:studentName,course_code:courseCode,assessment_name:assessmentName,assessment_type:assessmentType.toUpperCase(),score_percent:scorePercent,source_file:fileName});}}const normalized=[...gradeRowMap.values()];const assessmentRows=[...assessmentRowMap.values()];if(!normalized.length){return[{json:{status:'error',message:'No grade rows were parsed from the uploaded file.'}}];}const client=new Client({host:$env.DB_POSTGRESDB_HOST||'postgres',port:Number($env.DB_POSTGRESDB_PORT||5432),database:$env.DB_POSTGRESDB_DATABASE,user:$env.DB_POSTGRESDB_USER,password:$env.DB_POSTGRESDB_PASSWORD});await client.connect();try{const upsertSql=`INSERT INTO student_grades (term,program,student_id,student_name,course_code,grade,term_gpa,cumulative_gpa,repeat_flag,units,source_file) SELECT r.term,r.program,r.student_id,r.student_name,r.course_code,r.grade,r.term_gpa,r.cumulative_gpa,r.repeat_flag,r.units,r.source_file FROM json_to_recordset($1::json) AS r(term TEXT,program TEXT,student_id TEXT,student_name TEXT,course_code TEXT,grade TEXT,term_gpa FLOAT,cumulative_gpa FLOAT,repeat_flag TEXT,units INT,source_file TEXT) ON CONFLICT (term,student_id,course_code) DO UPDATE SET program=EXCLUDED.program,student_name=EXCLUDED.student_name,grade=EXCLUDED.grade,term_gpa=EXCLUDED.term_gpa,cumulative_gpa=EXCLUDED.cumulative_gpa,repeat_flag=EXCLUDED.repeat_flag,units=EXCLUDED.units,source_file=EXCLUDED.source_file,updated_at=NOW();`;await client.query(upsertSql,[JSON.stringify(normalized)]);if(assessmentRows.length){const assessmentUpsert=`INSERT INTO assessment_scores (term,program,student_id,student_name,course_code,assessment_name,assessment_type,score_percent,source_file) SELECT r.term,r.program,r.student_id,r.student_name,r.course_code,r.assessment_name,r.assessment_type,r.score_percent,r.source_file FROM json_to_recordset($1::json) AS r(term TEXT,program TEXT,student_id TEXT,student_name TEXT,course_code TEXT,assessment_name TEXT,assessment_type TEXT,score_percent FLOAT,source_file TEXT) ON CONFLICT (term,student_id,course_code,assessment_name) DO UPDATE SET program=EXCLUDED.program,student_name=EXCLUDED.student_name,assessment_type=EXCLUDED.assessment_type,score_percent=EXCLUDED.score_percent,source_file=EXCLUDED.source_file,updated_at=NOW();`;await client.query(assessmentUpsert,[JSON.stringify(assessmentRows)]);}const sample=normalized[0];const notes=assessmentRows.length?`Assessment rows ingested: ${assessmentRows.length}`:'No assessment-level rows detected in upload';await client.query('INSERT INTO upload_audit (file_name,file_type,term,program,rows_imported,status,notes) VALUES ($1,$2,$3,$4,$5,$6,$7)',[fileName,fileType,term,sample.program,normalized.length,'SUCCESS',notes]);return[{json:{status:'success',rows_imported:normalized.length,assessment_rows_imported:assessmentRows.length,term,file_type:fileType,source_file:fileName,program:sample.program,message:'Rows ingested into student_grades and assessment_scores'}}];}finally{await client.end();}"
+        },
+        "id": "2",
+        "name": "Parse And Upsert",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          520,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ $json }}",
+          "options": {
+            "responseHeaders": {
+              "entries": [
+                {
+                  "name": "Access-Control-Allow-Origin",
+                  "value": "*"
+                },
+                {
+                  "name": "Access-Control-Allow-Methods",
+                  "value": "GET, POST, OPTIONS"
+                },
+                {
+                  "name": "Access-Control-Allow-Headers",
+                  "value": "x-api-key, Content-Type"
+                }
+              ]
+            }
+          }
+        },
+        "id": "3",
+        "name": "Respond",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          780,
+          300
+        ]
+      }
+    ],
+    "connections": {
+      "WebhookUpload": {
+        "main": [
+          [
+            {
+              "node": "Parse And Upsert",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse And Upsert": {
+        "main": [
+          [
+            {
+              "node": "Respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {},
+    "active": false,
+    "meta": {}
+  }

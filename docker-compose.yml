@@ -1,0 +1,67 @@
+name: abet-api-stack
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: abet-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-abet_db}
+      POSTGRES_USER: ${POSTGRES_USER:-abet_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-abet_password}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-abet_user} -d ${POSTGRES_DB:-abet_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+
+  n8n:
+    build:
+      context: .
+      dockerfile: ./docker/n8n/Dockerfile
+    container_name: abet-n8n
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${N8N_PORT:-5678}:5678"
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB:-abet_db}
+      DB_POSTGRESDB_USER: ${POSTGRES_USER:-abet_user}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD:-abet_password}
+      DB_CONNECTION: postgres://${POSTGRES_USER:-abet_user}:${POSTGRES_PASSWORD:-abet_password}@postgres:5432/${POSTGRES_DB:-abet_db}
+      N8N_HOST: ${N8N_HOST:-localhost}
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      WEBHOOK_URL: ${WEBHOOK_URL:-http://localhost:5678}
+      GENERIC_TIMEZONE: ${GENERIC_TIMEZONE:-Africa/Cairo}
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER:-admin}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD:-aiu_abet_2026}
+      N8N_SECURE_COOKIE: "false"
+      N8N_DISABLE_PRODUCTION_MAIN_PROCESS: "false"
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      NODE_FUNCTION_ALLOW_EXTERNAL: xlsx,pg
+      ABET_API_KEY: ${ABET_API_KEY:-my-secret-key-2026}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-replace-with-real-key}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openai/gpt-4o-mini}
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n:/workspace/n8n
+      - ./Docs:/workspace/docs:ro
+
+volumes:
+  postgres_data:
+  n8n_data:

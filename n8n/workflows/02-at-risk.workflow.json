@@ -1,0 +1,97 @@
+{
+  "id": "wf_at_risk_001",
+  "versionId": "wf_at_risk_001_v1",
+  "name": "ABET At Risk API",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "at-risk",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "WebhookAtRisk",
+      "webhookId": "at-risk",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const item=$input.first()||{json:{}};const payload=item.json||{};const headers=payload.headers||{};const expected=String($env.ABET_API_KEY||'').trim();const incoming=String(headers['x-api-key']??headers['X-Api-Key']??'').trim();if(!expected||incoming!==expected){return[{json:{status:'error',message:'Unauthorized: invalid x-api-key'}}];}const query=payload.query||{};const term=String(query.term||'2242').trim();const threshold=Number.parseFloat(String(query.threshold||'2.0'));if(!Number.isFinite(threshold)||threshold<=0||threshold>4){return[{json:{status:'error',message:'threshold must be a GPA between 0.1 and 4.0'}}];}const {Client}=require('pg');const client=new Client({host:$env.DB_POSTGRESDB_HOST||'postgres',port:Number($env.DB_POSTGRESDB_PORT||5432),database:$env.DB_POSTGRESDB_DATABASE,user:$env.DB_POSTGRESDB_USER,password:$env.DB_POSTGRESDB_PASSWORD});await client.connect();try{const sql=`SELECT g.student_id,MAX(g.student_name) AS student_name,MAX(g.program) AS program,MAX(g.cumulative_gpa) AS cumulative_gpa,ARRAY_AGG(DISTINCT g.course_code) AS courses,ARRAY_AGG(DISTINCT g.grade) AS grades,BOOL_OR(g.grade='F') AS has_fail,BOOL_OR(g.grade='D') AS has_warning,BOOL_OR(g.grade='W') AS has_withdrawn,BOOL_OR(g.repeat_flag IS NOT NULL) AS has_repeat,MAX(g.cumulative_gpa) < $2::float AS low_gpa FROM student_grades g WHERE g.term=$1 AND (g.grade IN ('F','D','W') OR g.cumulative_gpa < $2::float OR g.repeat_flag IS NOT NULL) GROUP BY g.student_id ORDER BY MAX(g.cumulative_gpa) ASC`;const {rows}=await client.query(sql,[term,threshold]);const scored=rows.map((row)=>{let score=0;const flags=[];if(row.low_gpa){score+=30;flags.push('Low GPA');}if(row.has_fail){score+=25;flags.push('Failing course');}if(row.has_warning){score+=10;flags.push('Warning grade');}if(row.has_withdrawn){score+=15;flags.push('Withdrawn');}if(row.has_repeat){score+=20;flags.push('Repeat course');}score=Math.min(score,100);let risk_level='MODERATE';if(score>=50){risk_level='CRITICAL';}else if(score>=25){risk_level='HIGH';}return{student_id:row.student_id,student_name:row.student_name,program:row.program,cumulative_gpa:row.cumulative_gpa,risk_score:score,risk_level,flags,courses_at_risk:row.courses||[],grades:row.grades||[]};}).sort((a,b)=>b.risk_score-a.risk_score);return[{json:{status:'success',term,threshold,total_at_risk:scored.length,critical:scored.filter((s)=>s.risk_level==='CRITICAL').length,high:scored.filter((s)=>s.risk_level==='HIGH').length,students:scored,computed_at:new Date().toISOString()}}];}finally{await client.end();}"
+      },
+      "id": "2",
+      "name": "Compute At Risk",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "x-api-key, Content-Type"
+              }
+            ]
+          }
+        }
+      },
+      "id": "3",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        840,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "WebhookAtRisk": {
+      "main": [
+        [
+          {
+            "node": "Compute At Risk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute At Risk": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "active": false,
+  "meta": {}
+}

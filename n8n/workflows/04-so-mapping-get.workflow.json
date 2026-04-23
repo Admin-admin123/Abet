@@ -1,0 +1,97 @@
+{
+  "id": "wf_so_mapping_get_001",
+  "versionId": "wf_so_mapping_get_001_v2",
+  "name": "ABET SO Mapping GET API",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "so-mapping",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "WebhookSoMappingGet",
+      "webhookId": "so-mapping-get",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const item=$input.first()||{json:{}};const payload=item.json||{};const headers=payload.headers||{};const expected=String($env.ABET_API_KEY||'').trim();const incoming=String(headers['x-api-key']??headers['X-Api-Key']??'').trim();if(!expected||incoming!==expected){return[{json:{status:'error',message:'Unauthorized: invalid x-api-key'}}];}const query=payload.query||{};const program=String(query.program||'').trim().toUpperCase();if(!program){return[{json:{status:'error',message:'program query parameter is required'}}];}const normalizeSoList=(values)=>Array.isArray(values)?values.map((n)=>Number.parseInt(String(n),10)).filter((n)=>Number.isInteger(n)&&n>=1&&n<=6):[];const {Client}=require('pg');const client=new Client({host:$env.DB_POSTGRESDB_HOST||'postgres',port:Number($env.DB_POSTGRESDB_PORT||5432),database:$env.DB_POSTGRESDB_DATABASE,user:$env.DB_POSTGRESDB_USER,password:$env.DB_POSTGRESDB_PASSWORD});await client.connect();try{const assessmentSql=`SELECT course_code,assessment_name,COALESCE(NULLIF(MAX(assessment_type),''),'OTHER') AS assessment_type,ARRAY_AGG(DISTINCT so_number ORDER BY so_number) AS so_numbers FROM assessment_so_mapping WHERE program=$1 GROUP BY course_code,assessment_name ORDER BY course_code,assessment_name`;const assessmentRes=await client.query(assessmentSql,[program]);let source='assessment';let mappings=assessmentRes.rows.map((row)=>({course_code:String(row.course_code||'').trim().toUpperCase(),assessment_name:String(row.assessment_name||'FINAL_GRADE').trim()||'FINAL_GRADE',assessment_type:String(row.assessment_type||'OTHER').trim().toUpperCase()||'OTHER',so_numbers:normalizeSoList(row.so_numbers)}));if(!mappings.length){source='course_legacy';const legacySql=`SELECT course_code,ARRAY_AGG(DISTINCT so_number ORDER BY so_number) AS so_numbers FROM so_mapping WHERE program=$1 GROUP BY course_code ORDER BY course_code`;const legacyRes=await client.query(legacySql,[program]);mappings=legacyRes.rows.map((row)=>({course_code:String(row.course_code||'').trim().toUpperCase(),assessment_name:'FINAL_GRADE',assessment_type:'COURSE',so_numbers:normalizeSoList(row.so_numbers)}));}return[{json:{status:'success',program,source,assessment_items_total:mappings.length,mappings,updated_at:new Date().toISOString()}}];}finally{await client.end();}"
+      },
+      "id": "2",
+      "name": "Get SO Mapping",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "x-api-key, Content-Type"
+              }
+            ]
+          }
+        }
+      },
+      "id": "3",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        840,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "WebhookSoMappingGet": {
+      "main": [
+        [
+          {
+            "node": "Get SO Mapping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get SO Mapping": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "active": false,
+  "meta": {}
+}

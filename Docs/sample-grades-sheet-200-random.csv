@@ -1,0 +1,201 @@
+﻿Student,SIS User ID,Section,Final Grade,Term GPA,Cumulative GPA,Repeat,Unit Taken,Academic Program,Semester Label,Course Code
+Nassar - Tala,24010001,(CON210) Construction Methods (Spring 2026) - G1,A+,4.00,3.72,,3,CONS,Spring 2026,CON210
+Nassar - Yehia,24010002,(CSE251) Software Engineering (Spring 2026) - B1C,C,2.62,2.51,N,3,CSE,Spring 2026,CSE251
+Saad - Sara,24010003,(CON230) Cost Estimation (Spring 2025) - G3,B,2.99,2.79,,3,CONS,Spring 2025,CON230
+Metwally - Ahmed,24010004,(CON210) Construction Methods (Spring 2026) - G1,A-,3.89,4.00,,3,CONS,Spring 2026,CON210
+Sayed - Sara,24010005,(AIE230) IoT Systems (Fall 2025) - L2,A,3.61,3.66,,3,AIE,Fall 2025,AIE230
+Hossam - Farida,24010006,(CON230) Cost Estimation (Spring 2025) - G3,D+,1.86,2.01,N,3,CONS,Spring 2025,CON230
+Adel - Radwa,24010007,(CSE251) Software Engineering (Spring 2026) - B1C,B-,2.57,2.50,,3,CSE,Spring 2026,CSE251
+Mekawy - Rasha,24010008,(CSE252) Database Systems (Fall 2025) - A2,W,2.34,2.53,,3,CSE,Fall 2025,CSE252
+Metwally - Menna,24010009,(CE250) Control Engineering (Spring 2025) - E3,A,3.76,3.98,,3,CE,Spring 2025,CE250
+Saber - Rasha,24010010,(CE260) Digital Electronics (Fall 2024) - E4,F,1.00,1.00,,3,CE,Fall 2024,CE260
+Ibrahim - Walid,24010011,(CE260) Digital Electronics (Fall 2024) - E4,W,2.13,1.99,,3,CE,Fall 2024,CE260
+Gamal - Ziad,24010012,(ARC210) Architectural Design Studio (Spring 2026) - S1,A+,3.77,3.82,,4,ADDA,Spring 2026,ARC210
+Gaber - Sherif,24010013,(CSE251) Software Engineering (Spring 2026) - B1C,F,1.15,1.20,,3,CSE,Spring 2026,CSE251
+Soliman - Maged,24010014,(AIS320) Machine Learning (Fall 2025) - B2,B-,2.99,2.70,N,3,AIS,Fall 2025,AIS320
+Metwally - Nour,24010015,(CSE251) Software Engineering (Spring 2026) - B1C,B+,3.63,3.41,Y,3,CSE,Spring 2026,CSE251
+Zaki - Alaa,24010016,(CE260) Digital Electronics (Fall 2024) - E4,A-,3.58,3.56,,3,CE,Fall 2024,CE260
+Gaber - Ghada,24010017,(AIS210) Intro to AI Systems (Spring 2026) - A1,C+,2.30,2.47,,3,AIS,Spring 2026,AIS210
+Kassem - Islam,24010018,(AIE240) Edge Computing (Spring 2025) - L3,C+,2.57,2.47,,3,AIE,Spring 2025,AIE240
+Fahmy - Hadeer,24010019,(AIS320) Machine Learning (Fall 2025) - B2,B-,2.84,2.75,,3,AIS,Fall 2025,AIS320
+Kassem - Shahd,24010020,(ARC210) Architectural Design Studio (Spring 2026) - S1,D+,1.69,1.72,,4,ADDA,Spring 2026,ARC210
+Darwish - Hany,24010021,(CON230) Cost Estimation (Spring 2025) - G3,F,1.12,1.07,,3,CONS,Spring 2025,CON230
+Ghoneim - Dalia,24010022,(CE260) Digital Electronics (Fall 2024) - E4,F,1.00,1.14,Y,3,CE,Fall 2024,CE260
+Barakat - Raghda,24010023,(CON210) Construction Methods (Spring 2026) - G1,A+,4.00,4.00,,3,CONS,Spring 2026,CON210
+Mansour - Mahmoud,24010024,(CSE252) Database Systems (Fall 2025) - A2,A+,4.00,3.82,,3,CSE,Fall 2025,CSE252
+Hassan - Eman,24010025,(CE230) Data Communications (Spring 2026) - E1,A-,3.34,3.50,,3,CE,Spring 2026,CE230
+Youssef - Sondos,24010026,(CSE310) Computer Networks (Fall 2024) - D2,W,2.08,2.36,,3,CSE,Fall 2024,CSE310
+Samy - Ramez,24010027,(ADD220) Digital Visualization (Fall 2025) - S2,C-,2.36,2.54,,3,ADDA,Fall 2025,ADD220
+Wael - Samah,24010028,(CON240) Construction Safety (Fall 2024) - G4,W,2.33,2.07,,3,CONS,Fall 2024,CON240
+Mamdouh - Mina,24010029,(AIS320) Machine Learning (Fall 2025) - B2,A+,4.00,3.81,,3,AIS,Fall 2025,AIS320
+Shawky - Nadine,24010030,(AIE240) Edge Computing (Spring 2025) - L3,A+,3.70,3.78,N,3,AIE,Spring 2025,AIE240
+Saad - Yassin,24010031,(ADD240) Environmental Design (Fall 2024) - S4,B-,2.53,2.75,,3,ADDA,Fall 2024,ADD240
+Attia - Rasha,24010032,(CE230) Data Communications (Spring 2026) - E1,D,1.77,1.55,,3,CE,Spring 2026,CE230
+Saad - Heba,24010033,(CE260) Digital Electronics (Fall 2024) - E4,B+,3.52,3.27,,3,CE,Fall 2024,CE260
+Saber - Salma,24010034,(CE240) Signals and Systems (Fall 2025) - E2,D,1.78,2.08,,3,CE,Fall 2025,CE240
+Fahmy - Habiba,24010035,(CON240) Construction Safety (Fall 2024) - G4,B,3.18,3.29,N,3,CONS,Fall 2024,CON240
+Wael - Mervat,24010036,(AIE230) IoT Systems (Fall 2025) - L2,B+,3.41,3.42,,3,AIE,Fall 2025,AIE230
+Helmy - Aseel,24010037,(CON220) Project Planning (Fall 2025) - G2,D+,1.74,1.70,,3,CONS,Fall 2025,CON220
+Fahmy - Nermin,24010038,(CSE252) Database Systems (Fall 2025) - A2,A,4.00,3.72,Y,3,CSE,Fall 2025,CSE252
+Saber - Eman,24010039,(AIE240) Edge Computing (Spring 2025) - L3,C-,2.20,2.24,N,3,AIE,Spring 2025,AIE240
+Farouk - Maher,24010040,(CSE252) Database Systems (Fall 2025) - A2,D+,1.57,1.57,,3,CSE,Fall 2025,CSE252
+Nassar - Lina,24010041,(AIE230) IoT Systems (Fall 2025) - L2,C,2.56,2.30,,3,AIE,Fall 2025,AIE230
+Sayed - Islam,24010042,(ADD220) Digital Visualization (Fall 2025) - S2,C,2.60,2.59,,3,ADDA,Fall 2025,ADD220
+Sobhy - Sondos,24010043,(CE240) Signals and Systems (Fall 2025) - E2,A-,3.52,3.66,,3,CE,Fall 2025,CE240
+Wael - Nahla,24010044,(AIS340) Natural Language Processing (Fall 2024) - C2,A,3.87,3.72,,3,AIS,Fall 2024,AIS340
+Mansour - Salma,24010045,(CON240) Construction Safety (Fall 2024) - G4,C+,2.83,2.91,,3,CONS,Fall 2024,CON240
+Mansour - Doaa,24010046,(CE240) Signals and Systems (Fall 2025) - E2,C-,1.85,1.90,N,3,CE,Fall 2025,CE240
+Darwish - Loai,24010047,(ARC230) Building Materials (Spring 2025) - S3,A,3.61,3.75,,3,ADDA,Spring 2025,ARC230
+Khaled - Shahd,24010048,(AIS340) Natural Language Processing (Fall 2024) - C2,A-,3.54,3.44,,3,AIS,Fall 2024,AIS340
+Hakim - Mostafa,24010049,(CON210) Construction Methods (Spring 2026) - G1,W,2.47,2.70,,3,CONS,Spring 2026,CON210
+Ragab - Lina,24010050,(CSE260) Operating Systems (Spring 2025) - C1,F,1.44,1.38,N,3,CSE,Spring 2025,CSE260
+Radwan - Mona,24010051,(ARC230) Building Materials (Spring 2025) - S3,D,1.70,1.87,,3,ADDA,Spring 2025,ARC230
+Kassem - Mervat,24010052,(CON210) Construction Methods (Spring 2026) - G1,W,2.16,1.92,,3,CONS,Spring 2026,CON210
+Abdelrahman - Hana,24010053,(AIE230) IoT Systems (Fall 2025) - L2,A+,4.00,4.00,,3,AIE,Fall 2025,AIE230
+Naeem - Tamer,24010054,(CSE252) Database Systems (Fall 2025) - A2,W,2.44,2.66,,3,CSE,Fall 2025,CSE252
+Zaki - Shady,24010055,(AIS320) Machine Learning (Fall 2025) - B2,C,2.49,2.78,,3,AIS,Fall 2025,AIS320
+Helmy - Maged,24010056,(AIS340) Natural Language Processing (Fall 2024) - C2,D,1.46,1.42,,3,AIS,Fall 2024,AIS340
+Rizk - Rania,24010057,(AIE230) IoT Systems (Fall 2025) - L2,B+,3.51,3.35,,3,AIE,Fall 2025,AIE230
+Nassar - Maged,24010058,(CSE260) Operating Systems (Spring 2025) - C1,A,3.81,3.61,,3,CSE,Spring 2025,CSE260
+Ashraf - Haneen,24010059,(CSE310) Computer Networks (Fall 2024) - D2,A+,4.00,4.00,,3,CSE,Fall 2024,CSE310
+Gamal - Ibrahim,24010060,(AIS320) Machine Learning (Fall 2025) - B2,A,3.98,3.95,,3,AIS,Fall 2025,AIS320
+Shaban - Eman,24010061,(CE250) Control Engineering (Spring 2025) - E3,D,1.76,1.82,,3,CE,Spring 2025,CE250
+Khaled - Mina,24010062,(CSE251) Software Engineering (Spring 2026) - B1C,B,3.20,3.50,Y,3,CSE,Spring 2026,CSE251
+Lotfy - Rasha,24010063,(CON230) Cost Estimation (Spring 2025) - G3,B-,2.52,2.52,,3,CONS,Spring 2025,CON230
+Lotfy - Adel,24010064,(AIE230) IoT Systems (Fall 2025) - L2,B,2.77,2.81,Y,3,AIE,Fall 2025,AIE230
+Hakim - Farida,24010065,(ARC210) Architectural Design Studio (Spring 2026) - S1,C-,2.06,1.80,,4,ADDA,Spring 2026,ARC210
+Reda - Yasmine,24010066,(AIS210) Intro to AI Systems (Spring 2026) - A1,B,3.06,3.26,,3,AIS,Spring 2026,AIS210
+Emad - Noha,24010067,(ADD240) Environmental Design (Fall 2024) - S4,C-,1.83,2.10,,3,ADDA,Fall 2024,ADD240
+Ghoneim - Nadine,24010068,(AIE220) Embedded AI (Spring 2026) - L1,B-,2.71,2.91,,3,AIE,Spring 2026,AIE220
+Selim - Lina,24010069,(AIS340) Natural Language Processing (Fall 2024) - C2,W,1.94,2.15,,3,AIS,Fall 2024,AIS340
+Fouad - Maged,24010070,(ARC210) Architectural Design Studio (Spring 2026) - S1,B,3.38,3.14,,4,ADDA,Spring 2026,ARC210
+Ghoneim - Raghad,24010071,(ADD220) Digital Visualization (Fall 2025) - S2,A-,3.68,3.48,,3,ADDA,Fall 2025,ADD220
+Gaber - Hossam,24010072,(ARC210) Architectural Design Studio (Spring 2026) - S1,B+,3.09,3.05,,4,ADDA,Spring 2026,ARC210
+Barakat - Salma,24010073,(CSE251) Software Engineering (Spring 2026) - B1C,D,1.92,1.72,Y,3,CSE,Spring 2026,CSE251
+Fouad - Doaa,24010074,(CON230) Cost Estimation (Spring 2025) - G3,C+,2.41,2.37,,3,CONS,Spring 2025,CON230
+Gamal - Marwa,24010075,(AIS340) Natural Language Processing (Fall 2024) - C2,A,3.93,3.63,,3,AIS,Fall 2024,AIS340
+Kassem - Eman,24010076,(CON220) Project Planning (Fall 2025) - G2,A-,3.53,3.62,,3,CONS,Fall 2025,CON220
+Sherif - Samir,24010077,(ADD220) Digital Visualization (Fall 2025) - S2,W,1.86,1.57,Y,3,ADDA,Fall 2025,ADD220
+Badr - Moe,24010078,(AIS340) Natural Language Processing (Fall 2024) - C2,A,3.72,3.75,N,3,AIS,Fall 2024,AIS340
+Selim - Samah,24010079,(AIS330) Data Mining (Spring 2025) - A3,W,1.91,1.67,,3,AIS,Spring 2025,AIS330
+Badr - Raghad,24010080,(AIS330) Data Mining (Spring 2025) - A3,W,2.28,2.41,N,3,AIS,Spring 2025,AIS330
+Nasser - Yara,24010081,(ARC230) Building Materials (Spring 2025) - S3,A-,3.55,3.74,,3,ADDA,Spring 2025,ARC230
+Nabil - Omar,24010082,(AIE250) Robotics Programming (Fall 2024) - L4,B-,2.67,2.41,,3,AIE,Fall 2024,AIE250
+Hossam - Nour,24010083,(AIS320) Machine Learning (Fall 2025) - B2,W,2.55,2.58,,3,AIS,Fall 2025,AIS320
+Attia - Farida,24010084,(CE250) Control Engineering (Spring 2025) - E3,W,2.50,2.79,,3,CE,Spring 2025,CE250
+Fathy - Maged,24010085,(AIE240) Edge Computing (Spring 2025) - L3,B-,3.08,3.07,,3,AIE,Spring 2025,AIE240
+Attia - Hany,24010086,(CON210) Construction Methods (Spring 2026) - G1,D,1.72,1.67,,3,CONS,Spring 2026,CON210
+Younis - Radwa,24010087,(AIS340) Natural Language Processing (Fall 2024) - C2,B,3.18,3.36,,3,AIS,Fall 2024,AIS340
+Gamal - Bassel,24010088,(AIE240) Edge Computing (Spring 2025) - L3,F,1.18,1.26,,3,AIE,Spring 2025,AIE240
+Ali - Raghad,24010089,(AIE240) Edge Computing (Spring 2025) - L3,F,1.00,1.22,,3,AIE,Spring 2025,AIE240
+Ragab - Shahd,24010090,(AIE250) Robotics Programming (Fall 2024) - L4,C+,2.87,3.02,Y,3,AIE,Fall 2024,AIE250
+Saad - Menna,24010091,(CE250) Control Engineering (Spring 2025) - E3,D,1.46,1.55,,3,CE,Spring 2025,CE250
+Hassan - Laila,24010092,(ADD220) Digital Visualization (Fall 2025) - S2,A-,3.57,3.85,,3,ADDA,Fall 2025,ADD220
+Hamdy - Shahd,24010093,(CON210) Construction Methods (Spring 2026) - G1,B,3.18,3.40,,3,CONS,Spring 2026,CON210
+Nasser - Ali,24010094,(CSE251) Software Engineering (Spring 2026) - B1C,C,2.54,2.65,,3,CSE,Spring 2026,CSE251
+Hossam - Mariam,24010095,(AIS340) Natural Language Processing (Fall 2024) - C2,C-,2.00,1.99,,3,AIS,Fall 2024,AIS340
+Selim - Tamer,24010096,(CSE252) Database Systems (Fall 2025) - A2,B,3.36,3.20,,3,CSE,Fall 2025,CSE252
+Hossam - Nadine,24010097,(CON210) Construction Methods (Spring 2026) - G1,D+,1.78,1.55,Y,3,CONS,Spring 2026,CON210
+Metwally - Laila,24010098,(AIS210) Intro to AI Systems (Spring 2026) - A1,F,1.00,1.05,,3,AIS,Spring 2026,AIS210
+Ezz - Raghda,24010099,(CE260) Digital Electronics (Fall 2024) - E4,A+,4.00,4.00,,3,CE,Fall 2024,CE260
+Ghoneim - Maher,24010100,(AIS320) Machine Learning (Fall 2025) - B2,D+,1.90,1.94,,3,AIS,Fall 2025,AIS320
+Hamdy - Sara,24010101,(AIS320) Machine Learning (Fall 2025) - B2,W,2.30,2.02,,3,AIS,Fall 2025,AIS320
+Shaban - Ahmed,24010102,(AIS210) Intro to AI Systems (Spring 2026) - A1,A+,4.00,4.00,N,3,AIS,Spring 2026,AIS210
+Rizk - Walid,24010103,(CSE252) Database Systems (Fall 2025) - A2,A+,3.77,3.51,,3,CSE,Fall 2025,CSE252
+Ragab - Adel,24010104,(CSE260) Operating Systems (Spring 2025) - C1,D+,1.50,1.66,,3,CSE,Spring 2025,CSE260
+Ezz - Fadi,24010105,(AIE230) IoT Systems (Fall 2025) - L2,C,2.35,2.14,,3,AIE,Fall 2025,AIE230
+Hamdy - Shady,24010106,(AIE250) Robotics Programming (Fall 2024) - L4,W,2.55,2.77,,3,AIE,Fall 2024,AIE250
+Saad - Sondos,24010107,(AIS320) Machine Learning (Fall 2025) - B2,F,1.00,1.00,,3,AIS,Fall 2025,AIS320
+Nabil - Hana,24010108,(AIS320) Machine Learning (Fall 2025) - B2,W,2.25,2.35,,3,AIS,Fall 2025,AIS320
+Hakim - Loai,24010109,(CSE252) Database Systems (Fall 2025) - A2,C+,2.57,2.61,Y,3,CSE,Fall 2025,CSE252
+Sayed - Ali,24010110,(AIE230) IoT Systems (Fall 2025) - L2,A,4.00,3.85,,3,AIE,Fall 2025,AIE230
+Abdelrahman - Walid,24010111,(CON210) Construction Methods (Spring 2026) - G1,F,1.01,1.18,,3,CONS,Spring 2026,CON210
+Metwally - Omar,24010112,(ADD240) Environmental Design (Fall 2024) - S4,C+,2.85,2.74,,3,ADDA,Fall 2024,ADD240
+Hakim - Aya,24010113,(AIS210) Intro to AI Systems (Spring 2026) - A1,D+,1.89,1.71,,3,AIS,Spring 2026,AIS210
+Khaled - Mina,24010114,(AIE220) Embedded AI (Spring 2026) - L1,C,2.04,2.23,,3,AIE,Spring 2026,AIE220
+Ghoneim - Eman,24010115,(CON240) Construction Safety (Fall 2024) - G4,C,2.58,2.46,,3,CONS,Fall 2024,CON240
+Fathy - Sahar,24010116,(CON220) Project Planning (Fall 2025) - G2,D+,2.09,1.93,,3,CONS,Fall 2025,CON220
+Saad - Heba,24010117,(CON240) Construction Safety (Fall 2024) - G4,C+,2.41,2.59,,3,CONS,Fall 2024,CON240
+Samir - Hany,24010118,(ARC210) Architectural Design Studio (Spring 2026) - S1,C+,2.44,2.37,,4,ADDA,Spring 2026,ARC210
+Lotfy - Ibrahim,24010119,(CSE252) Database Systems (Fall 2025) - A2,B-,2.50,2.73,,3,CSE,Fall 2025,CSE252
+Attia - Karim,24010120,(AIE220) Embedded AI (Spring 2026) - L1,A+,3.94,4.00,,3,AIE,Spring 2026,AIE220
+Fikry - Doaa,24010121,(CSE260) Operating Systems (Spring 2025) - C1,A,3.71,3.41,N,3,CSE,Spring 2025,CSE260
+Naeem - Ramez,24010122,(CON230) Cost Estimation (Spring 2025) - G3,A,4.00,4.00,,3,CONS,Spring 2025,CON230
+Youssef - Alaa,24010123,(CON230) Cost Estimation (Spring 2025) - G3,D+,1.86,2.13,,3,CONS,Spring 2025,CON230
+Attia - Marwa,24010124,(CSE260) Operating Systems (Spring 2025) - C1,C+,2.30,2.36,,3,CSE,Spring 2025,CSE260
+Ghoneim - Tamer,24010125,(ADD240) Environmental Design (Fall 2024) - S4,B,2.87,2.91,,3,ADDA,Fall 2024,ADD240
+Fikry - Shady,24010126,(CE260) Digital Electronics (Fall 2024) - E4,A+,3.82,3.78,,3,CE,Fall 2024,CE260
+Nasser - Lina,24010127,(CON230) Cost Estimation (Spring 2025) - G3,C,2.39,2.12,,3,CONS,Spring 2025,CON230
+Kassem - Hassan,24010128,(CSE251) Software Engineering (Spring 2026) - B1C,A-,3.49,3.54,,3,CSE,Spring 2026,CSE251
+Emad - Ramy,24010129,(ARC210) Architectural Design Studio (Spring 2026) - S1,A+,4.00,4.00,,4,ADDA,Spring 2026,ARC210
+Samy - Yehia,24010130,(CE250) Control Engineering (Spring 2025) - E3,B,3.23,3.27,,3,CE,Spring 2025,CE250
+Selim - Nada,24010131,(CSE260) Operating Systems (Spring 2025) - C1,D,1.65,1.76,,3,CSE,Spring 2025,CSE260
+Mekawy - Shahd,24010132,(AIE230) IoT Systems (Fall 2025) - L2,A,3.64,3.93,,3,AIE,Fall 2025,AIE230
+Khaled - Haneen,24010133,(CE240) Signals and Systems (Fall 2025) - E2,B-,2.80,2.76,,3,CE,Fall 2025,CE240
+Mekawy - Walid,24010134,(AIE230) IoT Systems (Fall 2025) - L2,A+,4.00,3.80,,3,AIE,Fall 2025,AIE230
+Nasser - Ibrahim,24010135,(AIE230) IoT Systems (Fall 2025) - L2,F,1.00,1.12,,3,AIE,Fall 2025,AIE230
+Farouk - Tamer,24010136,(AIS330) Data Mining (Spring 2025) - A3,D,1.25,1.05,,3,AIS,Spring 2025,AIS330
+Ashraf - Mariam,24010137,(CSE310) Computer Networks (Fall 2024) - D2,F,1.26,1.48,,3,CSE,Fall 2024,CSE310
+Fahmy - Reem,24010138,(AIS340) Natural Language Processing (Fall 2024) - C2,D,1.40,1.61,,3,AIS,Fall 2024,AIS340
+Soliman - Bader,24010139,(ARC230) Building Materials (Spring 2025) - S3,B,3.11,3.33,,3,ADDA,Spring 2025,ARC230
+Helmy - Bassel,24010140,(ADD240) Environmental Design (Fall 2024) - S4,D+,1.86,2.15,,3,ADDA,Fall 2024,ADD240
+Ragab - Sahar,24010141,(CON220) Project Planning (Fall 2025) - G2,F,1.00,1.00,,3,CONS,Fall 2025,CON220
+Ali - Nahla,24010142,(AIE220) Embedded AI (Spring 2026) - L1,D,1.80,1.63,,3,AIE,Spring 2026,AIE220
+Naeem - Adel,24010143,(AIE230) IoT Systems (Fall 2025) - L2,D+,1.73,1.71,Y,3,AIE,Fall 2025,AIE230
+Mahmoud - Ziad,24010144,(CE260) Digital Electronics (Fall 2024) - E4,D+,1.71,1.67,,3,CE,Fall 2024,CE260
+Fouad - Fares,24010145,(CSE252) Database Systems (Fall 2025) - A2,A-,3.58,3.40,,3,CSE,Fall 2025,CSE252
+Mahmoud - Yehia,24010146,(CE260) Digital Electronics (Fall 2024) - E4,C-,1.82,1.89,,3,CE,Fall 2024,CE260
+Wael - Habiba,24010147,(CSE310) Computer Networks (Fall 2024) - D2,F,1.00,1.00,,3,CSE,Fall 2024,CSE310
+Ibrahim - Ali,24010148,(CE230) Data Communications (Spring 2026) - E1,A-,3.58,3.87,,3,CE,Spring 2026,CE230
+Attia - Heba,24010149,(CSE251) Software Engineering (Spring 2026) - B1C,B-,2.62,2.56,,3,CSE,Spring 2026,CSE251
+Ali - Basma,24010150,(AIS210) Intro to AI Systems (Spring 2026) - A1,C-,1.80,1.96,,3,AIS,Spring 2026,AIS210
+Khaled - Youssef,24010151,(AIS340) Natural Language Processing (Fall 2024) - C2,D,1.72,1.73,,3,AIS,Fall 2024,AIS340
+Mahmoud - Ramez,24010152,(AIE250) Robotics Programming (Fall 2024) - L4,B-,2.84,2.88,,3,AIE,Fall 2024,AIE250
+Selim - Salma,24010153,(AIS320) Machine Learning (Fall 2025) - B2,A-,3.85,4.00,,3,AIS,Fall 2025,AIS320
+Tarek - Hadeer,24010154,(AIE240) Edge Computing (Spring 2025) - L3,A-,3.54,3.84,N,3,AIE,Spring 2025,AIE240
+Fikry - Yara,24010155,(CSE310) Computer Networks (Fall 2024) - D2,D,1.42,1.29,Y,3,CSE,Fall 2024,CSE310
+Lotfy - Noha,24010156,(CSE310) Computer Networks (Fall 2024) - D2,A,3.88,3.70,,3,CSE,Fall 2024,CSE310
+Sobhy - Sahar,24010157,(AIE240) Edge Computing (Spring 2025) - L3,C-,1.86,2.08,Y,3,AIE,Spring 2025,AIE240
+Adel - Ahmed,24010158,(CSE260) Operating Systems (Spring 2025) - C1,B-,2.93,2.79,,3,CSE,Spring 2025,CSE260
+Shehata - Ziad,24010159,(AIE230) IoT Systems (Fall 2025) - L2,C,2.61,2.36,,3,AIE,Fall 2025,AIE230
+Hakim - Maher,24010160,(AIE250) Robotics Programming (Fall 2024) - L4,W,2.36,2.30,,3,AIE,Fall 2024,AIE250
+Badr - Radwa,24010161,(CSE310) Computer Networks (Fall 2024) - D2,A,4.00,3.70,N,3,CSE,Fall 2024,CSE310
+Samy - Walid,24010162,(ARC210) Architectural Design Studio (Spring 2026) - S1,W,2.30,2.28,,4,ADDA,Spring 2026,ARC210
+Lotfy - Nour,24010163,(AIE230) IoT Systems (Fall 2025) - L2,C+,2.35,2.44,,3,AIE,Fall 2025,AIE230
+Tarek - Basma,24010164,(AIE220) Embedded AI (Spring 2026) - L1,A,3.83,3.62,Y,3,AIE,Spring 2026,AIE220
+Saber - Sherif,24010165,(ADD220) Digital Visualization (Fall 2025) - S2,D,1.77,1.48,,3,ADDA,Fall 2025,ADD220
+Saber - Nour,24010166,(CE230) Data Communications (Spring 2026) - E1,A,3.81,4.00,Y,3,CE,Spring 2026,CE230
+Helmy - Doaa,24010167,(CE250) Control Engineering (Spring 2025) - E3,B+,3.37,3.63,,3,CE,Spring 2025,CE250
+Mostafa - Yara,24010168,(ARC230) Building Materials (Spring 2025) - S3,B,3.04,2.80,Y,3,ADDA,Spring 2025,ARC230
+Hassan - Mina,24010169,(ADD240) Environmental Design (Fall 2024) - S4,A,3.67,3.60,Y,3,ADDA,Fall 2024,ADD240
+Farouk - Mostafa,24010170,(CE260) Digital Electronics (Fall 2024) - E4,A+,4.00,3.87,,3,CE,Fall 2024,CE260
+Samir - Tamer,24010171,(AIS330) Data Mining (Spring 2025) - A3,A+,3.67,3.55,,3,AIS,Spring 2025,AIS330
+Nabil - Jana,24010172,(AIE230) IoT Systems (Fall 2025) - L2,D+,1.92,1.85,,3,AIE,Fall 2025,AIE230
+Metwally - Ghada,24010173,(CE260) Digital Electronics (Fall 2024) - E4,C-,2.02,2.02,,3,CE,Fall 2024,CE260
+Fahmy - Bader,24010174,(CON210) Construction Methods (Spring 2026) - G1,D,1.65,1.70,,3,CONS,Spring 2026,CON210
+Nabil - Yassin,24010175,(CSE260) Operating Systems (Spring 2025) - C1,C-,2.08,2.02,,3,CSE,Spring 2025,CSE260
+Kassem - Yasmine,24010176,(ARC230) Building Materials (Spring 2025) - S3,C+,2.68,2.76,,3,ADDA,Spring 2025,ARC230
+Adel - Omar,24010177,(CE250) Control Engineering (Spring 2025) - E3,A+,3.61,3.71,,3,CE,Spring 2025,CE250
+Samir - Aseel,24010178,(CSE252) Database Systems (Fall 2025) - A2,W,1.98,2.05,Y,3,CSE,Fall 2025,CSE252
+Adel - Noha,24010179,(CON240) Construction Safety (Fall 2024) - G4,D,1.77,1.47,,3,CONS,Fall 2024,CON240
+Samir - Reem,24010180,(AIE250) Robotics Programming (Fall 2024) - L4,C,2.33,2.61,,3,AIE,Fall 2024,AIE250
+Mostafa - Hany,24010181,(CON220) Project Planning (Fall 2025) - G2,A+,3.79,3.50,,3,CONS,Fall 2025,CON220
+Mostafa - Sondos,24010182,(CON220) Project Planning (Fall 2025) - G2,C+,2.24,2.42,N,3,CONS,Fall 2025,CON220
+Helmy - Rasha,24010183,(CON220) Project Planning (Fall 2025) - G2,F,1.00,1.00,,3,CONS,Fall 2025,CON220
+Farouk - Bassel,24010184,(AIE250) Robotics Programming (Fall 2024) - L4,D,1.44,1.59,,3,AIE,Fall 2024,AIE250
+Ali - Maged,24010185,(CSE310) Computer Networks (Fall 2024) - D2,D+,1.95,2.19,Y,3,CSE,Fall 2024,CSE310
+Saad - Walid,24010186,(ARC230) Building Materials (Spring 2025) - S3,F,1.21,1.18,N,3,ADDA,Spring 2025,ARC230
+Hamdy - Alaa,24010187,(AIE250) Robotics Programming (Fall 2024) - L4,C,2.22,2.40,,3,AIE,Fall 2024,AIE250
+Ragab - Mona,24010188,(AIE230) IoT Systems (Fall 2025) - L2,A,3.65,3.67,,3,AIE,Fall 2025,AIE230
+Gaber - Lina,24010189,(AIS330) Data Mining (Spring 2025) - A3,B+,3.51,3.23,,3,AIS,Spring 2025,AIS330
+Fahmy - Maged,24010190,(CE230) Data Communications (Spring 2026) - E1,F,1.00,1.00,,3,CE,Spring 2026,CE230
+Fouad - Hany,24010191,(CSE251) Software Engineering (Spring 2026) - B1C,B-,2.49,2.57,,3,CSE,Spring 2026,CSE251
+Rizk - Noha,24010192,(CSE310) Computer Networks (Fall 2024) - D2,C-,1.99,1.79,N,3,CSE,Fall 2024,CSE310
+Mahmoud - Bader,24010193,(CSE251) Software Engineering (Spring 2026) - B1C,B-,2.96,2.87,,3,CSE,Spring 2026,CSE251
+Kassem - Rana,24010194,(AIE250) Robotics Programming (Fall 2024) - L4,D,1.81,1.54,Y,3,AIE,Fall 2024,AIE250
+Samir - Sondos,24010195,(AIE240) Edge Computing (Spring 2025) - L3,D,1.48,1.46,,3,AIE,Spring 2025,AIE240
+Hakim - Habiba,24010196,(CON240) Construction Safety (Fall 2024) - G4,B-,3.04,3.13,,3,CONS,Fall 2024,CON240
+Hassan - Nermin,24010197,(CE260) Digital Electronics (Fall 2024) - E4,B-,3.07,3.21,,3,CE,Fall 2024,CE260
+Nabil - Nadine,24010198,(CE260) Digital Electronics (Fall 2024) - E4,C+,2.42,2.14,,3,CE,Fall 2024,CE260
+Mahmoud - Ziad,24010199,(ADD220) Digital Visualization (Fall 2025) - S2,W,2.38,2.42,Y,3,ADDA,Fall 2025,ADD220
+Hassan - Shahd,24010200,(ARC210) Architectural Design Studio (Spring 2026) - S1,B-,3.15,3.30,N,4,ADDA,Spring 2026,ARC210

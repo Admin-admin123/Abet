@@ -1,0 +1,97 @@
+{
+  "id": "wf_generate_report_001",
+  "versionId": "wf_generate_report_001_v2",
+  "name": "ABET Report Generator API",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-report",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "WebhookGenerateReport",
+      "webhookId": "generate-report",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const item=$input.first()||{json:{}};const payload=item.json||{};const headers=payload.headers||{};const expected=String($env.ABET_API_KEY||'').trim();const incoming=String(headers['x-api-key']??headers['X-Api-Key']??'').trim();if(!expected||incoming!==expected){return[{json:{status:'error',message:'Unauthorized: invalid x-api-key'}}];}const body=payload.body||{};const term=String(body.term||'2242').trim();const program=String(body.program||'CSE').trim().toUpperCase();const type=String(body.type||'annual').trim().toLowerCase();const threshold=Number.parseFloat(String(body.threshold||'70'));if(!Number.isFinite(threshold)||threshold<=0||threshold>100){return[{json:{status:'error',message:'threshold must be between 1 and 100'}}];}const {Client}=require('pg');const client=new Client({host:$env.DB_POSTGRESDB_HOST||'postgres',port:Number($env.DB_POSTGRESDB_PORT||5432),database:$env.DB_POSTGRESDB_DATABASE,user:$env.DB_POSTGRESDB_USER,password:$env.DB_POSTGRESDB_PASSWORD});await client.connect();try{let rows=[];let basis='so_attainment_cache';try{const queryResult=await client.query('SELECT so_number,attainment_rate,students_assessed,students_attained,meets_threshold FROM so_attainment WHERE term=$1 AND program=$2 ORDER BY so_number',[term,program]);rows=queryResult.rows||[];}catch(dbErr){return[{json:{status:'error',message:'Failed reading so_attainment data',details:String(dbErr.message||dbErr),term,program,type,threshold}}];}if(!rows.length){const assessmentSql=`WITH per_student_so AS ( SELECT s.student_id,m.so_number,AVG(s.score_percent) AS avg_score FROM assessment_scores s JOIN assessment_so_mapping m ON s.course_code=m.course_code AND s.program=m.program AND UPPER(s.assessment_name)=UPPER(m.assessment_name) WHERE s.program=$1 AND s.term=$2 GROUP BY s.student_id,m.so_number ) SELECT so_number,COUNT(*)::INT AS students_assessed,COUNT(*) FILTER (WHERE avg_score >= $3)::INT AS students_attained FROM per_student_so GROUP BY so_number ORDER BY so_number`;const assessmentResult=await client.query(assessmentSql,[program,term,threshold]);let computed=[];if(assessmentResult.rows.length){basis='assessment_components';computed=assessmentResult.rows.map((row)=>{const so=Number.parseInt(String(row.so_number),10);const students_assessed=Number.parseInt(String(row.students_assessed||0),10);const students_attained=Number.parseInt(String(row.students_attained||0),10);const rate=students_assessed?students_attained/students_assessed:0;const attainment_rate=Math.round(rate*1000)/10;const meets_threshold=rate>=(threshold/100);return{so_number:so,attainment_rate,students_assessed,students_attained,meets_threshold};});}else{basis='course_grade_fallback';const sql=`SELECT g.student_id,g.grade,m.so_number,m.program FROM student_grades g JOIN so_mapping m ON g.course_code=m.course_code AND m.program=$1 WHERE g.term=$2 AND m.program=$1 ORDER BY m.so_number,g.student_id`;const q=await client.query(sql,[program,term]);const PASS=new Set(['A+','A','A-','B+','B','B-','C+','C']);const groups=new Map();for(const row of q.rows){const so=Number.parseInt(String(row.so_number),10);const sid=String(row.student_id||'').trim();const grade=String(row.grade||'').trim().toUpperCase();if(!Number.isFinite(so)||!sid){continue;}if(!groups.has(so)){groups.set(so,{assessed:new Set(),attained:new Set()});}const g=groups.get(so);g.assessed.add(sid);if(PASS.has(grade)){g.attained.add(sid);}}computed=[...groups.entries()].sort((a,b)=>a[0]-b[0]).map(([so,g])=>{const students_assessed=g.assessed.size;const students_attained=g.attained.size;const rate=students_assessed?students_attained/students_assessed:0;const attainment_rate=Math.round(rate*1000)/10;const meets_threshold=rate>=(threshold/100);return{so_number:so,attainment_rate,students_assessed,students_attained,meets_threshold};});}if(computed.length){const upsert=`INSERT INTO so_attainment (term,program,so_number,attainment_rate,students_assessed,students_attained,meets_threshold) SELECT $1,$2,r.so_number,r.attainment_rate,r.students_assessed,r.students_attained,r.meets_threshold FROM json_to_recordset($3::json) AS r(so_number INT,attainment_rate FLOAT,students_assessed INT,students_attained INT,meets_threshold BOOLEAN) ON CONFLICT (term,program,so_number) DO UPDATE SET attainment_rate=EXCLUDED.attainment_rate,students_assessed=EXCLUDED.students_assessed,students_attained=EXCLUDED.students_attained,meets_threshold=EXCLUDED.meets_threshold,computed_at=NOW();`;await client.query(upsert,[term,program,JSON.stringify(computed)]);}rows=computed;}const results=rows.map((r)=>{const rate=Number(r.attainment_rate||0);const meets=r.meets_threshold===null||r.meets_threshold===undefined?rate>=threshold:Boolean(r.meets_threshold);return{so_label:`SO${r.so_number}`,so_number:Number(r.so_number),students_assessed:Number(r.students_assessed||0),students_attained:Number(r.students_attained||0),attainment_rate:rate,meets_threshold:meets,status:meets?'ACHIEVED':'NOT_MET'};});const overall_avg=results.length?Math.round((results.reduce((s,r)=>s+r.attainment_rate,0)/results.length)*10)/10:0;const sos_achieved=results.filter((r)=>r.meets_threshold).length;const sos_total=results.length;const soLines=results.map((so)=>`${so.so_label}: ${so.attainment_rate}% - ${so.status} (${so.students_attained}/${so.students_assessed} students)`).join('\\n');const prompt=`You are an ABET accreditation analyst writing a formal self-study report section. PROGRAM: ${program}. TERM: ${term}. REPORT TYPE: ${type}. STUDENT OUTCOME ATTAINMENT DATA: ${soLines}. SUMMARY: ${sos_achieved}/${sos_total} SOs achieved. Average attainment: ${overall_avg}%. ABET THRESHOLD: ${threshold}% attainment required per SO. Write a formal ABET self-study narrative with: (1) overall summary in 2-3 sentences, (2) root-cause plus one Continuous Improvement Action for each SO below threshold, (3) high-performing SO best practices, and (4) exactly 3 bullet-point recommendations for next cycle.`;const apiKey=String($env.OPENROUTER_API_KEY||'').trim();const model=String($env.OPENROUTER_MODEL||'openai/gpt-4o-mini').trim();if(!apiKey){return[{json:{status:'error',message:'OPENROUTER_API_KEY is not configured',term,program,type,threshold,basis,overall_avg,sos_achieved,sos_total,results}}];}let data={};try{data=await this.helpers.httpRequest({method:'POST',url:'https://openrouter.ai/api/v1/chat/completions',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},body:{model,max_tokens:2000,temperature:0.3,messages:[{role:'user',content:prompt}]},json:true});}catch(netErr){const statusCode=netErr?.response?.statusCode||netErr?.statusCode||null;const responseBody=netErr?.response?.body||netErr?.body||null;return[{json:{status:'error',message:statusCode?`OpenRouter error ${statusCode}`:'OpenRouter request failed',details:responseBody||String(netErr.message||netErr),term,program,type,threshold,basis,overall_avg,sos_achieved,sos_total,results}}];}const report=(data?.choices?.[0]?.message?.content||data?.choices?.[0]?.text||'').trim();return[{json:{status:'success',term,program,type,threshold,basis,overall_avg,sos_achieved,sos_total,results,report,generated_at:new Date().toISOString(),usage:data.usage||null}}];}finally{await client.end();}"
+      },
+      "id": "2",
+      "name": "Generate Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "x-api-key, Content-Type"
+              }
+            ]
+          }
+        }
+      },
+      "id": "3",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        840,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "WebhookGenerateReport": {
+      "main": [
+        [
+          {
+            "node": "Generate Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Report": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "active": false,
+  "meta": {}
+}

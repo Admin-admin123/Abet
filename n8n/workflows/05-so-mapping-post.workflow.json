@@ -1,0 +1,97 @@
+{
+  "id": "wf_so_mapping_post_001",
+  "versionId": "wf_so_mapping_post_001_v2",
+  "name": "ABET SO Mapping POST API",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "so-mapping",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "WebhookSoMappingPost",
+      "webhookId": "so-mapping-post",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const item=$input.first()||{json:{}};const payload=item.json||{};const headers=payload.headers||{};const expected=String($env.ABET_API_KEY||'').trim();const incoming=String(headers['x-api-key']??headers['X-Api-Key']??'').trim();if(!expected||incoming!==expected){return[{json:{status:'error',message:'Unauthorized: invalid x-api-key'}}];}const body=payload.body||payload;const program=String(body.program||'').trim().toUpperCase();if(!program){return[{json:{status:'error',message:'program is required'}}];}const normalizeCode=(value)=>String(value||'').trim().toUpperCase();const normalizeAssessmentName=(value)=>{const cleaned=String(value||'').trim();return cleaned||'FINAL_GRADE';};const classifyType=(name)=>{const n=String(name||'').trim().toLowerCase();if(!n||n==='final_grade'){return 'COURSE';}if(n.includes('quiz')) return 'QUIZ';if(n.includes('project')) return 'PROJECT';if(n.includes('assignment')||n.includes('homework')||n.includes('hw')) return 'ASSIGNMENT';if(n.includes('exam')||n.includes('midterm')||n.includes('final')) return 'EXAM';if(n.includes('lab')) return 'LAB';return 'OTHER';};const normalizeType=(value,name)=>{const cleaned=String(value||'').trim().toUpperCase();return cleaned||classifyType(name);};const parseNumbers=(value)=>{const list=Array.isArray(value)?value:(value===null||value===undefined?[]:[value]);const numbers=list.map((entry)=>Number.parseInt(String(entry),10)).filter((num)=>Number.isInteger(num)&&num>=1&&num<=6);return [...new Set(numbers)].sort((a,b)=>a-b);};const inputMappings=Array.isArray(body.mappings)?body.mappings:[];if(!inputMappings.length){return[{json:{status:'error',message:'mappings array is required'}}];}const flattened=[];for(const row of inputMappings){const courseCode=normalizeCode(row.course_code??row.courseCode);if(!courseCode){continue;}const assessmentName=normalizeAssessmentName(row.assessment_name??row.assessmentName);const assessmentType=normalizeType(row.assessment_type??row.assessmentType,assessmentName);const soNumbers=parseNumbers(row.so_numbers??row.so_number);for(const so of soNumbers){flattened.push({course_code:courseCode,assessment_name:assessmentName,assessment_type:assessmentType,so_number:so});}}if(!flattened.length){return[{json:{status:'error',message:'No valid mapping entries were provided'}}];}const touchedPairs=[...new Set(flattened.map((entry)=>`${entry.course_code}::${entry.assessment_name.toUpperCase()}`))].map((key)=>{const sep=key.indexOf('::');return{course_code:key.slice(0,sep),assessment_name:key.slice(sep+2)};});const touchedCourses=[...new Set(flattened.map((entry)=>entry.course_code))];const finalRows=flattened.filter((entry)=>entry.assessment_name.toUpperCase()==='FINAL_GRADE').map((entry)=>({course_code:entry.course_code,so_number:entry.so_number}));const {Client}=require('pg');const client=new Client({host:$env.DB_POSTGRESDB_HOST||'postgres',port:Number($env.DB_POSTGRESDB_PORT||5432),database:$env.DB_POSTGRESDB_DATABASE,user:$env.DB_POSTGRESDB_USER,password:$env.DB_POSTGRESDB_PASSWORD});await client.connect();try{await client.query('BEGIN');const deleteAssessmentSql=`DELETE FROM assessment_so_mapping m USING json_to_recordset($2::json) AS r(course_code TEXT,assessment_name TEXT) WHERE m.program=$1 AND m.course_code=r.course_code AND UPPER(m.assessment_name)=UPPER(r.assessment_name)`;await client.query(deleteAssessmentSql,[program,JSON.stringify(touchedPairs)]);const insertAssessmentSql=`INSERT INTO assessment_so_mapping (course_code,program,assessment_name,assessment_type,so_number) SELECT r.course_code,$1,r.assessment_name,r.assessment_type,r.so_number FROM json_to_recordset($2::json) AS r(course_code TEXT,assessment_name TEXT,assessment_type TEXT,so_number INT) ON CONFLICT (course_code,program,assessment_name,so_number) DO UPDATE SET assessment_type=EXCLUDED.assessment_type`;await client.query(insertAssessmentSql,[program,JSON.stringify(flattened)]);if(touchedCourses.length){await client.query('DELETE FROM so_mapping WHERE program=$1 AND course_code = ANY($2::text[])',[program,touchedCourses]);if(finalRows.length){const insertLegacySql=`INSERT INTO so_mapping (course_code,program,so_number) SELECT r.course_code,$1,r.so_number FROM json_to_recordset($2::json) AS r(course_code TEXT,so_number INT) ON CONFLICT (course_code,program,so_number) DO NOTHING`;await client.query(insertLegacySql,[program,JSON.stringify(finalRows)]);}}await client.query('COMMIT');const fetchSql=`SELECT course_code,assessment_name,COALESCE(NULLIF(MAX(assessment_type),''),'OTHER') AS assessment_type,ARRAY_AGG(DISTINCT so_number ORDER BY so_number) AS so_numbers FROM assessment_so_mapping WHERE program=$1 GROUP BY course_code,assessment_name ORDER BY course_code,assessment_name`;const {rows}=await client.query(fetchSql,[program]);const mappings=rows.map((row)=>({course_code:String(row.course_code||'').trim().toUpperCase(),assessment_name:String(row.assessment_name||'FINAL_GRADE').trim()||'FINAL_GRADE',assessment_type:String(row.assessment_type||'OTHER').trim().toUpperCase()||'OTHER',so_numbers:Array.isArray(row.so_numbers)?row.so_numbers.map((n)=>Number.parseInt(String(n),10)).filter((n)=>Number.isInteger(n)&&n>=1&&n<=6):[]}));return[{json:{status:'success',program,assessment_items_updated:touchedPairs.length,courses_updated:touchedCourses.length,mappings,updated_at:new Date().toISOString()}}];}catch(err){try{await client.query('ROLLBACK');}catch(_rollbackErr){}return[{json:{status:'error',message:'Failed to save SO mapping',details:String(err.message||err)}}];}finally{await client.end();}"
+      },
+      "id": "2",
+      "name": "Save SO Mapping",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "x-api-key, Content-Type"
+              }
+            ]
+          }
+        }
+      },
+      "id": "3",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        840,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "WebhookSoMappingPost": {
+      "main": [
+        [
+          {
+            "node": "Save SO Mapping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save SO Mapping": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "active": false,
+  "meta": {}
+}

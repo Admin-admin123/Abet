@@ -1,0 +1,21 @@
+Student,SIS User ID,Section,Final Grade,Term GPA,Cumulative GPA,Repeat,Unit Taken
+Ahmed Ali,24010001,"(CSE251) Software Engineering (Spring 2026), B1C",A,3.70,3.55,,3
+Mona Hassan,24010002,"(CSE251) Software Engineering (Spring 2026), B1C",B+,3.25,3.10,,3
+Youssef Tarek,24010003,"(CSE251) Software Engineering (Spring 2026), B1C",C,2.40,2.65,,3
+Salma Nabil,24010004,"(CSE251) Software Engineering (Spring 2026), B1C",F,1.60,2.05,,3
+Karim Adel,24010005,"(CSE252) Database Systems (Spring 2026), B1C",A-,3.45,3.30,,3
+Heba Samir,24010006,"(CSE252) Database Systems (Spring 2026), B1C",B,3.00,2.95,,3
+Omar Reda,24010007,"(CSE252) Database Systems (Spring 2026), B1C",D+,2.00,2.35,,3
+Nour Mostafa,24010008,"(CSE252) Database Systems (Spring 2026), B1C",F,1.30,1.90,,3
+Laila Emad,24010009,"(AIS210) Intro to AI Systems (Spring 2026), A2",A,3.80,3.60,,3
+Mahmoud Fathy,24010010,"(AIS210) Intro to AI Systems (Spring 2026), A2",B,3.10,2.85,,3
+Rana Khaled,24010011,"(AIS210) Intro to AI Systems (Spring 2026), A2",C+,2.65,2.70,,3
+Tamer Wael,24010012,"(AIE220) Intro to Embedded AI (Spring 2026), A1",B-,2.75,2.60,,3
+Dina Atef,24010013,"(AIE220) Intro to Embedded AI (Spring 2026), A1",C,2.30,2.40,,3
+Ali Hamed,24010014,"(AIE220) Intro to Embedded AI (Spring 2026), A1",D,1.95,2.20,,3
+Farida Yasser,24010015,"(CE230) Data Communications (Spring 2026), C1",A-,3.50,3.25,,3
+Amr Sobhy,24010016,"(CE230) Data Communications (Spring 2026), C1",B+,3.20,3.05,,3
+Sara Gamal,24010017,"(CE230) Data Communications (Spring 2026), C1",C-,2.10,2.45,,3
+Yara Hossam,24010018,"(CSE251) Software Engineering (Spring 2026), B1C",B,3.05,2.90,Y,3
+Ibrahim Nasser,24010019,"(CSE252) Database Systems (Spring 2026), B1C",A,3.75,3.40,,3
+Mariam Ezz,24010020,"(AIS210) Intro to AI Systems (Spring 2026), A2",D+,2.05,2.15,,3

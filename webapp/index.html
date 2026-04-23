@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ABET Workflow Control Room</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Sora:wght@500;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="bg-orb orb-a"></div>
+    <div class="bg-orb orb-b"></div>
+    <div class="bg-grid"></div>
+
+    <main class="app-shell">
+      <header class="hero reveal">
+        <p class="eyebrow">n8n + REST Orchestration</p>
+        <h1>ABET Workflow Control Room</h1>
+        <p class="subtitle">
+          Run your entire ABET pipeline from one screen: upload grades, compute
+          per-faculty S attainment, detect at-risk students, and generate reports.
+        </p>
+      </header>
+
+      <!-- ── Pipeline Controls ─────────────────────────────────────────── -->
+      <section class="panel reveal" id="control-panel">
+        <h2>Pipeline Controls</h2>
+        <div class="form-grid">
+          <label>
+            API Base URL
+            <input id="baseUrl" type="text" value="http://localhost:5678/webhook" />
+          </label>
+
+          <label>
+            API Key
+            <input id="apiKey" type="text" value="my-secret-key-2026" />
+          </label>
+
+          <label>
+            Term
+            <input id="term" type="text" value="2242" />
+          </label>
+
+          <label>
+            Upload Faculty (for file upload)
+            <select id="program">
+              <option value="CSE" selected>CSE</option>
+              <option value="AIS">AIS</option>
+              <option value="AIE">AIE</option>
+              <option value="CE">CE</option>
+              <option value="ADDA">ADDA</option>
+              <option value="CONS">CONS</option>
+            </select>
+          </label>
+
+          <label>
+            At-Risk Threshold (GPA)
+            <input id="threshold" type="number" step="0.1" min="0.1" max="4.0" value="2.0" />
+          </label>
+
+          <label>
+            Report Type
+            <select id="reportType">
+              <option value="annual" selected>annual</option>
+              <option value="semester">semester</option>
+              <option value="midterm">midterm</option>
+            </select>
+          </label>
+
+          <label>
+            Attainment Threshold (%)
+            <input id="attainmentThreshold" type="number" step="1" min="1" max="100" value="70" />
+          </label>
+
+          <label class="file-field">
+            Upload Grades File
+            <input id="gradesFile" type="file" accept=".csv,.xlsx,.xls" />
+          </label>
+        </div>
+
+        <div class="button-row">
+          <button id="runAllBtn" class="btn btn-primary">Run Full Workflow</button>
+          <button id="uploadBtn" class="btn">Upload</button>
+          <button id="facultyReportBtn" class="btn">Faculty Report</button>
+          <button id="riskBtn" class="btn">At-Risk</button>
+          <button id="reportBtn" class="btn">Generate Report</button>
+          <button id="clearLogsBtn" class="btn btn-ghost">Clear Logs</button>
+        </div>
+      </section>
+
+      <!-- ── Faculty Course Configuration ──────────────────────────────── -->
+      <section class="panel reveal" id="course-config-panel">
+        <div class="panel-top-row">
+          <h2>Faculty Course Configuration</h2>
+          <div class="button-row mapping-actions">
+            <button id="loadCourseConfigBtn" class="btn">Load Config</button>
+            <button id="extractCoursesBtn" class="btn">Extract From File</button>
+            <button id="addCourseRowBtn" class="btn">Add Row</button>
+            <button id="saveCourseConfigBtn" class="btn btn-primary">Save Config</button>
+          </div>
+        </div>
+        <p class="summary-meta">
+          For each faculty, assign each course the Student Outcome (S1–S6) it targets
+          and the metric type (Quiz, Assignment, etc.) used to measure it.
+          These settings drive the Faculty Report calculation.
+        </p>
+        <p id="courseConfigStatus" class="mapping-status">No configuration loaded yet.</p>
+
+        <div class="mapping-table-wrap">
+          <table class="mapping-table">
+            <thead>
+              <tr>
+                <th>Faculty</th>
+                <th>Course Code</th>
+                <th>Chosen S</th>
+                <th>Metric Type</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="courseConfigTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── Live Workflow Map ───────────────────────────────────────────── -->
+      <section class="workflow reveal" id="workflow-map">
+        <h2>Live Workflow Map</h2>
+        <div class="lane">
+          <article class="step-card" data-step="upload">
+            <p class="step-index">01</p>
+            <h3>Upload Grades</h3>
+            <p class="endpoint">POST /upload</p>
+            <p class="status" id="status-upload">Idle</p>
+          </article>
+
+          <div class="connector"></div>
+
+          <article class="step-card" data-step="facultyReport">
+            <p class="step-index">02</p>
+            <h3>Faculty Report</h3>
+            <p class="endpoint">GET /faculty-report</p>
+            <p class="status" id="status-facultyReport">Idle</p>
+          </article>
+
+          <div class="connector"></div>
+
+          <article class="step-card" data-step="risk">
+            <p class="step-index">03</p>
+            <h3>At-Risk Analytics</h3>
+            <p class="endpoint">GET /at-risk</p>
+            <p class="status" id="status-risk">Idle</p>
+          </article>
+
+          <div class="connector"></div>
+
+          <article class="step-card" data-step="report">
+            <p class="step-index">04</p>
+            <h3>Report Generator</h3>
+            <p class="endpoint">POST /generate-report</p>
+            <p class="status" id="status-report">Idle</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- ── Metrics Bar ─────────────────────────────────────────────────── -->
+      <section class="metrics reveal">
+        <article class="metric-card">
+          <p class="metric-label">Rows Imported</p>
+          <p class="metric-value" id="metric-rows">0</p>
+        </article>
+        <article class="metric-card">
+          <p class="metric-label">Courses Analyzed</p>
+          <p class="metric-value" id="metric-courses">0</p>
+        </article>
+        <article class="metric-card">
+          <p class="metric-label">Students At-Risk</p>
+          <p class="metric-value" id="metric-risk">0</p>
+        </article>
+        <article class="metric-card">
+          <p class="metric-label">Report Status</p>
+          <p class="metric-value" id="metric-report">Idle</p>
+        </article>
+      </section>
+
+      <!-- ── Faculty Report Results ──────────────────────────────────────── -->
+      <section class="panel reveal" id="faculty-results-section">
+        <div class="panel-top-row">
+          <h2>Faculty Report Results</h2>
+          <button id="exportPdfBtn" class="btn btn-primary">Export PDF Report</button>
+        </div>
+        <p id="facultyResultsMeta" class="summary-meta">
+          Run the Faculty Report to see per-faculty, per-course S attainment results.
+        </p>
+        <div id="facultyResultsBody"></div>
+      </section>
+
+      <!-- ── Executive Summary ───────────────────────────────────────────── -->
+      <section class="panel narrative reveal">
+        <div class="panel-top-row">
+          <h2>Executive Summary (Plain Language)</h2>
+        </div>
+        <p id="summaryMeta" class="summary-meta">
+          Run the workflow to generate a reader-friendly accreditation brief.
+        </p>
+
+        <div class="summary-grid">
+          <article class="summary-card">
+            <h3>Data Upload</h3>
+            <p id="summary-upload">No upload has been run yet.</p>
+          </article>
+          <article class="summary-card">
+            <h3>Faculty Report</h3>
+            <p id="summary-facultyReport">No faculty report data yet.</p>
+          </article>
+          <article class="summary-card">
+            <h3>At-Risk Students</h3>
+            <p id="summary-risk">No at-risk analysis yet.</p>
+          </article>
+          <article class="summary-card">
+            <h3>Report Generation</h3>
+            <p id="summary-report-status">No report generated yet.</p>
+          </article>
+        </div>
+
+        <article class="summary-card summary-card-wide">
+          <h3>Accreditation Narrative</h3>
+          <div id="summary-report" class="markdown-content">The generated narrative will appear here after report generation.</div>
+        </article>
+      </section>
+
+      <!-- ── Endpoint Responses ─────────────────────────────────────────── -->
+      <section class="panel outputs reveal">
+        <div class="panel-top-row">
+          <h2>Endpoint Responses</h2>
+          <label class="toggle-inline" for="rawModeToggle">
+            <input id="rawModeToggle" type="checkbox" />
+            <span>Show raw JSON</span>
+          </label>
+        </div>
+        <div class="output-grid">
+          <article>
+            <h3>Upload</h3>
+            <div id="output-upload" class="output-box"></div>
+          </article>
+          <article>
+            <h3>Faculty Report</h3>
+            <div id="output-facultyReport" class="output-box"></div>
+          </article>
+          <article>
+            <h3>At-Risk</h3>
+            <div id="output-risk" class="output-box"></div>
+          </article>
+          <article>
+            <h3>Report</h3>
+            <div id="output-report" class="output-box"></div>
+          </article>
+        </div>
+      </section>
+
+      <!-- ── Execution Log ───────────────────────────────────────────────── -->
+      <section class="panel logs reveal">
+        <h2>Execution Log</h2>
+        <pre id="logConsole" class="log-console"></pre>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@14.1.2/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+    <script src="./app.js" defer></script>
+  </body>
+</html>
