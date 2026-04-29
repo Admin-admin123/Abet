@@ -9,7 +9,7 @@ if (!expected || incoming !== expected) {
 }
 
 const query = payload.query || {};
-const faculty = String(query.faculty || '').trim().toUpperCase();
+const includeInactive = String(query.include_inactive || '').toLowerCase() === 'true';
 
 const { Client } = require('pg');
 const client = new Client({
@@ -22,28 +22,23 @@ const client = new Client({
 
 await client.connect();
 try {
-  let sql = `SELECT course_code, faculty, chosen_s, chosen_metrics, threshold
-             FROM course_faculty_config`;
-  const params = [];
+  const sql = includeInactive
+    ? 'SELECT id, code, name, description, active, created_at, updated_at FROM faculties ORDER BY code'
+    : 'SELECT id, code, name, description, active, created_at, updated_at FROM faculties WHERE active = TRUE ORDER BY code';
 
-  if (faculty) {
-    sql += ' WHERE faculty = $1';
-    params.push(faculty);
-  }
-  sql += ' ORDER BY faculty, course_code';
-
-  const { rows } = await client.query(sql, params);
+  const { rows } = await client.query(sql);
 
   return [{
     json: {
       status: 'success',
-      faculty: faculty || 'ALL',
-      courses: rows.map((r) => ({
-        course_code: String(r.course_code),
-        faculty: String(r.faculty),
-        chosen_s: Number(r.chosen_s),
-        chosen_metrics: Array.isArray(r.chosen_metrics) ? r.chosen_metrics : ['QUIZ'],
-        threshold: r.threshold !== null ? Number(r.threshold) : null,
+      faculties: rows.map((r) => ({
+        id: Number(r.id),
+        code: String(r.code),
+        name: String(r.name),
+        description: String(r.description),
+        active: Boolean(r.active),
+        created_at: r.created_at,
+        updated_at: r.updated_at,
       })),
       count: rows.length,
     },

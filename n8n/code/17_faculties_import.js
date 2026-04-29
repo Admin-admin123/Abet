@@ -1,0 +1,114 @@
+const item = $input.first() || { json: {} };
+const payload = item.json || {};
+const headers = payload.headers || {};
+
+const expected = String($env.ABET_API_KEY || '').trim();
+const incoming = String(headers['x-api-key'] ?? headers['X-Api-Key'] ?? '').trim();
+if (!expected || incoming !== expected) {
+  return [{ json: { status: 'error', message: 'Unauthorized: invalid x-api-key' } }];
+}
+
+const body = payload.body || {};
+const previewOnly = String(body.preview || '').toLowerCase() === 'true';
+const rows = Array.isArray(body.rows) ? body.rows : [];
+
+if (!rows.length) {
+  return [{ json: { status: 'error', message: 'rows array is required and must not be empty' } }];
+}
+
+const CODE_RE = /^[A-Z0-9]{1,20}$/;
+const parsed = [];
+const errors = [];
+
+for (let i = 0; i < rows.length; i++) {
+  const row = rows[i];
+  const code = String(row.code || '').trim().toUpperCase();
+  const name = String(row.name || '').trim();
+  const description = String(row.description || '').trim();
+
+  if (!code) {
+    errors.push({ row: i + 1, issue: 'code is empty' });
+    continue;
+  }
+  if (!CODE_RE.test(code)) {
+    errors.push({ row: i + 1, code, issue: 'code must be 1–20 uppercase letters/digits' });
+    continue;
+  }
+  if (parsed.some((p) => p.code === code)) {
+    errors.push({ row: i + 1, code, issue: 'duplicate code in CSV' });
+    continue;
+  }
+  parsed.push({ code, name, description });
+}
+
+if (previewOnly) {
+  return [{
+    json: {
+      status: 'preview',
+      valid_rows: parsed,
+      error_rows: errors,
+      valid_count: parsed.length,
+      error_count: errors.length,
+    },
+  }];
+}
+
+if (!parsed.length) {
+  return [{ json: { status: 'error', message: 'No valid rows to import after validation', error_rows: errors } }];
+}
+
+const { Client } = require('pg');
+const client = new Client({
+  host: $env.DB_POSTGRESDB_HOST || 'postgres',
+  port: Number($env.DB_POSTGRESDB_PORT || 5432),
+  database: $env.DB_POSTGRESDB_DATABASE,
+  user: $env.DB_POSTGRESDB_USER,
+  password: $env.DB_POSTGRESDB_PASSWORD,
+});
+
+await client.connect();
+try {
+  await client.query('BEGIN');
+  const imported = [];
+
+  for (const { code, name, description } of parsed) {
+    const result = await client.query(
+      `INSERT INTO faculties (code, name, description, active)
+       VALUES ($1, $2, $3, TRUE)
+       ON CONFLICT (code) DO UPDATE SET
+         name        = EXCLUDED.name,
+         description = EXCLUDED.description,
+         active      = TRUE,
+         updated_at  = NOW()
+       RETURNING id, code, name, description, active, (xmax = 0) AS is_insert`,
+      [code, name, description]
+    );
+    const row = result.rows[0];
+    imported.push({
+      id: Number(row.id),
+      code: String(row.code),
+      name: String(row.name),
+      description: String(row.description),
+      action: row.is_insert ? 'created' : 'updated',
+    });
+  }
+
+  await client.query('COMMIT');
+
+  return [{
+    json: {
+      status: 'success',
+      imported,
+      imported_count: imported.length,
+      created: imported.filter((r) => r.action === 'created').length,
+      updated: imported.filter((r) => r.action === 'updated').length,
+      error_rows: errors,
+      error_count: errors.length,
+    },
+  }];
+} catch (err) {
+  await client.query('ROLLBACK');
+  throw err;
+} finally {
+  await client.end();
+}

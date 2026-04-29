@@ -1,0 +1,59 @@
+{
+  "id": "wf_faculties_get_001",
+  "versionId": "wf_faculties_get_001_v1",
+  "name": "ABET Faculties GET API",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "faculties",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "WebhookFacultiesGet",
+      "webhookId": "faculties-get",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [260, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const item=$input.first()||{json:{}};const payload=item.json||{};const headers=payload.headers||{};const expected=String($env.ABET_API_KEY||'').trim();const incoming=String(headers['x-api-key']??headers['X-Api-Key']??'').trim();if(!expected||incoming!==expected){return[{json:{status:'error',message:'Unauthorized: invalid x-api-key'}}];}const query=payload.query||{};const includeInactive=String(query.include_inactive||'').toLowerCase()==='true';const{Client}=require('pg');const client=new Client({host:$env.DB_POSTGRESDB_HOST||'postgres',port:Number($env.DB_POSTGRESDB_PORT||5432),database:$env.DB_POSTGRESDB_DATABASE,user:$env.DB_POSTGRESDB_USER,password:$env.DB_POSTGRESDB_PASSWORD});await client.connect();try{const sql=includeInactive?'SELECT id,code,name,description,active,created_at,updated_at FROM faculties ORDER BY code':'SELECT id,code,name,description,active,created_at,updated_at FROM faculties WHERE active=TRUE ORDER BY code';const{rows}=await client.query(sql);return[{json:{status:'success',faculties:rows.map((r)=>({id:Number(r.id),code:String(r.code),name:String(r.name),description:String(r.description),active:Boolean(r.active),created_at:r.created_at,updated_at:r.updated_at})),count:rows.length}}];}finally{await client.end();}"
+      },
+      "id": "2",
+      "name": "Get Faculties",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [560, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Access-Control-Allow-Methods", "value": "GET, POST, PATCH, DELETE, OPTIONS" },
+              { "name": "Access-Control-Allow-Headers", "value": "x-api-key, Content-Type" }
+            ]
+          }
+        }
+      },
+      "id": "3",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [840, 300]
+    }
+  ],
+  "connections": {
+    "WebhookFacultiesGet": { "main": [[{ "node": "Get Faculties", "type": "main", "index": 0 }]] },
+    "Get Faculties":        { "main": [[{ "node": "Respond",       "type": "main", "index": 0 }]] }
+  },
+  "settings": {},
+  "active": false,
+  "meta": {}
+}

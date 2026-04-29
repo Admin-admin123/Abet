@@ -15,7 +15,6 @@ if (!courses.length) {
   return [{ json: { status: 'error', message: 'courses array is required and must not be empty' } }];
 }
 
-const VALID_FACULTIES = new Set(['AIE', 'AIS', 'CE', 'CSE', 'ADDA', 'CONS']);
 const VALID_METRICS = new Set(['QUIZ', 'ASSIGNMENT', 'EXAM', 'LAB', 'PROJECT', 'COURSE', 'OTHER']);
 
 const { Client } = require('pg');
@@ -28,6 +27,11 @@ const client = new Client({
 });
 
 await client.connect();
+
+// Load active faculties from DB — stays in sync with the faculties table
+const { rows: facRows } = await client.query('SELECT code FROM faculties WHERE active = TRUE');
+const VALID_FACULTIES = new Set(facRows.map((r) => String(r.code)));
+
 let updatedCount = 0;
 try {
   await client.query('BEGIN');
@@ -36,21 +40,40 @@ try {
     const courseCode = String(course.course_code || '').trim().toUpperCase();
     const faculty = String(course.faculty || '').trim().toUpperCase();
     const chosenS = Number.parseInt(String(course.chosen_s), 10);
-    const rawMetric = String(course.chosen_metric || 'QUIZ').trim().toUpperCase();
-    const chosenMetric = VALID_METRICS.has(rawMetric) ? rawMetric : 'QUIZ';
+
+    // chosen_metrics: accept array or single string (backward compat)
+    let rawMetrics = course.chosen_metrics ?? course.chosen_metric ?? ['QUIZ'];
+    if (!Array.isArray(rawMetrics)) rawMetrics = [rawMetrics];
+    const chosenMetrics = rawMetrics
+      .map((m) => String(m || '').trim().toUpperCase())
+      .filter((m) => VALID_METRICS.has(m));
+    if (!chosenMetrics.length) chosenMetrics.push('QUIZ');
+
+    // threshold: null means use the global threshold at report time
+    const rawThreshold = course.threshold;
+    const threshold =
+      rawThreshold === null || rawThreshold === undefined || rawThreshold === ''
+        ? null
+        : (() => {
+            const n = Number(rawThreshold);
+            return Number.isFinite(n) && n >= 1 && n <= 100 ? Math.round(n * 10) / 10 : null;
+          })();
 
     if (!courseCode || !faculty) continue;
     if (!VALID_FACULTIES.has(faculty)) continue;
     if (!Number.isFinite(chosenS) || chosenS < 1 || chosenS > 6) continue;
 
     await client.query(
-      `INSERT INTO course_faculty_config (course_code, faculty, chosen_s, chosen_metric, updated_at)
-       VALUES ($1, $2, $3, $4, NOW())
+      `INSERT INTO course_faculty_config
+         (course_code, faculty, chosen_s, chosen_metric, chosen_metrics, threshold, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())
        ON CONFLICT (course_code, faculty) DO UPDATE SET
-         chosen_s = EXCLUDED.chosen_s,
+         chosen_s      = EXCLUDED.chosen_s,
          chosen_metric = EXCLUDED.chosen_metric,
-         updated_at = NOW()`,
-      [courseCode, faculty, chosenS, chosenMetric]
+         chosen_metrics = EXCLUDED.chosen_metrics,
+         threshold     = EXCLUDED.threshold,
+         updated_at    = NOW()`,
+      [courseCode, faculty, chosenS, chosenMetrics[0], chosenMetrics, threshold]
     );
     updatedCount++;
   }

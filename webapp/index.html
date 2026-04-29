@@ -47,12 +47,7 @@
             Upload Faculty (for file upload)
             <select id="program">
               <option value="AUTO" selected>AUTO — detect per row</option>
-              <option value="CSE">CSE</option>
-              <option value="AIS">AIS</option>
-              <option value="AIE">AIE</option>
-              <option value="CE">CE</option>
-              <option value="ADDA">ADDA</option>
-              <option value="CONS">CONS</option>
+              <!-- Faculty options populated dynamically from /faculties API -->
             </select>
           </label>
 
@@ -117,11 +112,91 @@
                 <th>Faculty</th>
                 <th>Course Code</th>
                 <th>Chosen S</th>
-                <th>Metric Type</th>
+                <th>Metric Types</th>
+                <th>Threshold %</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody id="courseConfigTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── Faculty Manager ───────────────────────────────────────────────── -->
+      <section class="panel reveal" id="faculty-manager-panel">
+        <div class="panel-top-row">
+          <h2>Faculty Manager</h2>
+          <div class="button-row mapping-actions">
+            <button id="loadFacultiesBtn" class="btn">Refresh</button>
+            <button id="importCsvFacultyBtn" class="btn">Import CSV</button>
+            <button id="addFacultyRowBtn" class="btn">Add Faculty</button>
+          </div>
+        </div>
+        <p class="summary-meta">
+          Manage faculty programs. Changes sync immediately to all dropdowns.
+          Soft-delete preserves historical data; hard-delete is blocked when grade or config rows exist.
+        </p>
+        <p id="facultyManagerStatus" class="mapping-status">Loading faculties…</p>
+
+        <!-- CSV Import Widget -->
+        <div id="facultyCsvImportWidget" class="faculty-csv-widget hidden">
+          <div class="faculty-csv-header">
+            <span class="faculty-csv-title">CSV Import</span>
+            <button id="closeCsvImportBtn" class="btn btn-ghost" style="padding:4px 10px;">✕</button>
+          </div>
+          <p class="faculty-csv-hint">
+            Columns: <code>code</code> (required), <code>name</code>, <code>description</code>.
+            First row must be headers. Existing codes will be updated (upsert).
+          </p>
+          <label style="max-width:380px;">
+            Choose CSV File
+            <input id="facultyCsvFileInput" type="file" accept=".csv" />
+          </label>
+          <div id="facultyCsvPreviewArea" class="faculty-csv-preview hidden"></div>
+          <div class="button-row" style="margin-top:10px;">
+            <button id="previewCsvBtn" class="btn">Preview</button>
+            <button id="confirmCsvImportBtn" class="btn btn-primary hidden">Confirm Import</button>
+          </div>
+        </div>
+
+        <!-- Add / Edit Form -->
+        <div id="facultyEditForm" class="faculty-edit-form hidden">
+          <div class="faculty-edit-header">
+            <span id="facultyEditTitle" class="faculty-edit-label">New Faculty</span>
+            <button id="cancelFacultyEditBtn" class="btn btn-ghost" style="padding:4px 10px;">✕</button>
+          </div>
+          <div class="form-grid faculty-form-grid">
+            <label>
+              Code (required)
+              <input id="facultyEditCode" type="text" placeholder="e.g. ME" maxlength="20" style="text-transform:uppercase;" />
+            </label>
+            <label>
+              Full Name
+              <input id="facultyEditName" type="text" placeholder="e.g. Mechanical Engineering" />
+            </label>
+            <label>
+              Description
+              <input id="facultyEditDescription" type="text" placeholder="Optional short description" />
+            </label>
+          </div>
+          <div class="button-row" style="margin-top:10px;">
+            <button id="saveFacultyEditBtn" class="btn btn-primary">Save</button>
+          </div>
+        </div>
+
+        <!-- Faculty Table -->
+        <div class="mapping-table-wrap">
+          <table class="mapping-table" id="facultyTable">
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Full Name</th>
+                <th>Description</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="facultyTableBody"></tbody>
           </table>
         </div>
       </section>

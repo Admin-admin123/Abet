@@ -922,6 +922,240 @@ select:focus {
   font-size: 0.8rem;
 }
 
+/* ── Faculty Manager panel ───────────────────────────────────────────────── */
+
+#faculty-manager-panel .mapping-table {
+  min-width: 680px;
+}
+
+.faculty-row-inactive td {
+  opacity: 0.5;
+}
+
+.faculty-actions-cell {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.faculty-actions-cell .btn {
+  padding: 5px 10px;
+  font-size: 0.77rem;
+}
+
+.faculty-action-deactivate {
+  border-color: rgba(255, 197, 85, 0.45);
+  color: #ffe9a0;
+}
+.faculty-action-deactivate:hover { border-color: rgba(255, 197, 85, 0.8); }
+
+.faculty-action-reactivate {
+  border-color: rgba(72, 224, 134, 0.45);
+  color: #a5f0c2;
+}
+.faculty-action-reactivate:hover { border-color: rgba(72, 224, 134, 0.8); }
+
+.faculty-action-delete {
+  border-color: rgba(255, 95, 117, 0.45);
+  color: #ffd4db;
+}
+.faculty-action-delete:hover { background: rgba(255, 95, 117, 0.14); }
+
+/* ── Faculty Edit Form ───────────────────────────────────────────────────── */
+
+.faculty-edit-form {
+  margin-bottom: 14px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(56, 214, 182, 0.38);
+  background: rgba(22, 38, 62, 0.65);
+  animation: fadeSlideIn 0.2s ease;
+}
+
+.faculty-edit-form.hidden { display: none; }
+
+.faculty-edit-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.faculty-edit-label {
+  font-family: "Sora", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #d8f5ef;
+}
+
+.faculty-form-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* ── Faculty CSV Import Widget ───────────────────────────────────────────── */
+
+.faculty-csv-widget {
+  margin-bottom: 14px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 155, 68, 0.42);
+  background: rgba(40, 22, 8, 0.55);
+  animation: fadeSlideIn 0.2s ease;
+}
+
+.faculty-csv-widget.hidden { display: none; }
+
+.faculty-csv-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.faculty-csv-title {
+  font-family: "Sora", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffdcb0;
+}
+
+.faculty-csv-hint {
+  margin: 0 0 12px;
+  font-size: 0.82rem;
+  color: #c8a880;
+}
+
+.faculty-csv-hint code {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.79em;
+}
+
+.faculty-csv-preview { margin-top: 10px; }
+.faculty-csv-preview.hidden { display: none; }
+
+.faculty-csv-stats {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.faculty-csv-error {
+  color: #ffd4db;
+  font-size: 0.84rem;
+  margin: 0;
+}
+
+.csv-error-row td { opacity: 0.65; }
+
+.confirmCsvImportBtn.hidden,
+#confirmCsvImportBtn.hidden { display: none; }
+
+@media (max-width: 640px) {
+  .faculty-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Metric pill toggles (course config table) ───────────────────────────── */
+
+.metrics-cell {
+  min-width: 180px;
+}
+
+.metric-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.metric-toggle {
+  padding: 2px 7px;
+  font-size: 0.71rem;
+  font-weight: 600;
+  border-radius: 999px;
+  border: 1px solid rgba(145, 178, 219, 0.28);
+  background: rgba(14, 22, 36, 0.75);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  white-space: nowrap;
+}
+
+.metric-toggle:hover {
+  border-color: rgba(145, 178, 219, 0.55);
+  color: #c8d8f0;
+}
+
+.metric-toggle.active {
+  background: rgba(56, 214, 182, 0.18);
+  border-color: rgba(56, 214, 182, 0.6);
+  color: #9ef0de;
+}
+
+/* ── Per-row threshold input ─────────────────────────────────────────────── */
+
+.threshold-input {
+  width: 62px;
+  background: rgba(7, 14, 24, 0.9);
+  color: var(--text);
+  border: 1px solid rgba(145, 178, 219, 0.25);
+  border-radius: 8px;
+  padding: 6px 6px;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.threshold-input:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 2px rgba(56, 214, 182, 0.15);
+  outline: none;
+}
+
+/* ── Results table: metric chips + threshold chip ────────────────────────── */
+
+.metrics-display-cell {
+  min-width: 140px;
+}
+
+.metric-chip {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border-radius: 999px;
+  background: rgba(56, 214, 182, 0.14);
+  border: 1px solid rgba(56, 214, 182, 0.35);
+  color: #8ee8d4;
+  margin-right: 2px;
+  white-space: nowrap;
+}
+
+.threshold-chip {
+  display: inline-block;
+  padding: 1px 7px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 999px;
+  background: rgba(255, 197, 85, 0.14);
+  border: 1px solid rgba(255, 197, 85, 0.4);
+  color: #ffe0a0;
+  white-space: nowrap;
+}
+
+.threshold-chip.global {
+  background: rgba(145, 178, 219, 0.1);
+  border-color: rgba(145, 178, 219, 0.3);
+  color: var(--muted);
+}
+
+/* Widen the course-config mapping table to fit new columns */
+#course-config-panel .mapping-table {
+  min-width: 820px;
+}
+
 @keyframes driftA {
   from {
     transform: translate3d(0, 0, 0) scale(1);

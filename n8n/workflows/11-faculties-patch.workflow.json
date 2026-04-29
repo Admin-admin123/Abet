@@ -1,0 +1,59 @@
+{
+  "id": "wf_faculties_patch_001",
+  "versionId": "wf_faculties_patch_001_v1",
+  "name": "ABET Faculties PATCH API",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "PATCH",
+        "path": "faculties",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "WebhookFacultiesPatch",
+      "webhookId": "faculties-patch",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [260, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const item=$input.first()||{json:{}};const payload=item.json||{};const headers=payload.headers||{};const expected=String($env.ABET_API_KEY||'').trim();const incoming=String(headers['x-api-key']??headers['X-Api-Key']??'').trim();if(!expected||incoming!==expected){return[{json:{status:'error',message:'Unauthorized: invalid x-api-key'}}];}const query=payload.query||{};const targetCode=String(query.code||'').trim().toUpperCase();if(!targetCode){return[{json:{status:'error',message:'code query parameter is required'}}];}const body=payload.body||{};const updates=[];const params=[];if(body.name!==undefined){params.push(String(body.name).trim());updates.push(`name=$${params.length}`);}if(body.description!==undefined){params.push(String(body.description).trim());updates.push(`description=$${params.length}`);}if(body.active!==undefined){params.push(body.active===true||body.active==='true');updates.push(`active=$${params.length}`);}if(!updates.length){return[{json:{status:'error',message:'Provide at least one field to update: name, description, or active'}}];}const setClause=[...updates,'updated_at=NOW()'].join(',');params.push(targetCode);const whereParam=`$${params.length}`;const{Client}=require('pg');const client=new Client({host:$env.DB_POSTGRESDB_HOST||'postgres',port:Number($env.DB_POSTGRESDB_PORT||5432),database:$env.DB_POSTGRESDB_DATABASE,user:$env.DB_POSTGRESDB_USER,password:$env.DB_POSTGRESDB_PASSWORD});await client.connect();try{let warning=null;const isDeactivating=body.active===false||body.active==='false';if(isDeactivating){const usageRes=await client.query(`SELECT(SELECT COUNT(*)FROM student_grades WHERE program=$1)::int AS grade_rows,(SELECT COUNT(*)FROM course_faculty_config WHERE faculty=$1)::int AS config_rows`,[targetCode]);const{grade_rows,config_rows}=usageRes.rows[0];if(Number(grade_rows)>0||Number(config_rows)>0){warning=`Faculty deactivated. ${grade_rows} grade row(s) and ${config_rows} course config row(s) are preserved.`;}}const result=await client.query(`UPDATE faculties SET ${setClause} WHERE code=${whereParam} RETURNING id,code,name,description,active,updated_at`,params);if(!result.rows.length){return[{json:{status:'error',message:`Faculty '${targetCode}' not found`}}];}const row=result.rows[0];const response={status:'success',faculty:{id:Number(row.id),code:String(row.code),name:String(row.name),description:String(row.description),active:Boolean(row.active),updated_at:row.updated_at}};if(warning)response.warning=warning;return[{json:response}];}finally{await client.end();}"
+      },
+      "id": "2",
+      "name": "Update Faculty",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [560, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Access-Control-Allow-Methods", "value": "GET, POST, PATCH, DELETE, OPTIONS" },
+              { "name": "Access-Control-Allow-Headers", "value": "x-api-key, Content-Type" }
+            ]
+          }
+        }
+      },
+      "id": "3",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [840, 300]
+    }
+  ],
+  "connections": {
+    "WebhookFacultiesPatch": { "main": [[{ "node": "Update Faculty", "type": "main", "index": 0 }]] },
+    "Update Faculty":         { "main": [[{ "node": "Respond",        "type": "main", "index": 0 }]] }
+  },
+  "settings": {},
+  "active": false,
+  "meta": {}
+}

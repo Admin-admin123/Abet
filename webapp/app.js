@@ -3,9 +3,10 @@ const COURSE_CONFIG_STORAGE_KEY = "abet-course-config:v1";
 const REQUEST_TIMEOUT_MS = 120000;
 const PDF_FILE_PREFIX = "ABET-Faculty-Report";
 
-const FACULTIES = ["AIE", "AIS", "CE", "CSE", "ADDA", "CONS"];
+let FACULTIES = ["AIE", "AIS", "CE", "CSE", "ADDA", "CONS"]; // overwritten on load from /faculties
 const S_RANGE = [1, 2, 3, 4, 5, 6];
 const METRIC_TYPES = ["QUIZ", "ASSIGNMENT", "EXAM", "LAB", "PROJECT", "COURSE", "OTHER"];
+const METRIC_SHORT = { QUIZ:"Quiz", ASSIGNMENT:"Assign", EXAM:"Exam", LAB:"Lab", PROJECT:"Proj", COURSE:"Course", OTHER:"Other" };
 
 // ── DOM element references ───────────────────────────────────────────────────
 
@@ -63,6 +64,25 @@ const elements = {
   crossFacultySection: document.getElementById("crossFacultySection"),
   fileDetectionBanner: document.getElementById("fileDetectionBanner"),
 
+  loadFacultiesBtn:       document.getElementById("loadFacultiesBtn"),
+  importCsvFacultyBtn:    document.getElementById("importCsvFacultyBtn"),
+  addFacultyRowBtn:       document.getElementById("addFacultyRowBtn"),
+  facultyManagerStatus:   document.getElementById("facultyManagerStatus"),
+  facultyCsvImportWidget: document.getElementById("facultyCsvImportWidget"),
+  closeCsvImportBtn:      document.getElementById("closeCsvImportBtn"),
+  facultyCsvFileInput:    document.getElementById("facultyCsvFileInput"),
+  facultyCsvPreviewArea:  document.getElementById("facultyCsvPreviewArea"),
+  previewCsvBtn:          document.getElementById("previewCsvBtn"),
+  confirmCsvImportBtn:    document.getElementById("confirmCsvImportBtn"),
+  facultyEditForm:        document.getElementById("facultyEditForm"),
+  facultyEditTitle:       document.getElementById("facultyEditTitle"),
+  cancelFacultyEditBtn:   document.getElementById("cancelFacultyEditBtn"),
+  facultyEditCode:        document.getElementById("facultyEditCode"),
+  facultyEditName:        document.getElementById("facultyEditName"),
+  facultyEditDescription: document.getElementById("facultyEditDescription"),
+  saveFacultyEditBtn:     document.getElementById("saveFacultyEditBtn"),
+  facultyTableBody:       document.getElementById("facultyTableBody"),
+
   logConsole: document.getElementById("logConsole"),
 };
 
@@ -84,6 +104,9 @@ const latestResults = {
 let busy = false;
 let courseConfigRows = [];
 let activeFacultyFilter = "ALL";
+let facultyRows = [];
+let facultyEditTarget = null;
+let csvParsedRows = null;
 
 // ── Utility helpers ──────────────────────────────────────────────────────────
 
@@ -264,6 +287,12 @@ function setBusy(nextBusy) {
     elements.extractCoursesBtn,
     elements.addCourseRowBtn,
     elements.saveCourseConfigBtn,
+    elements.loadFacultiesBtn,
+    elements.importCsvFacultyBtn,
+    elements.addFacultyRowBtn,
+    elements.saveFacultyEditBtn,
+    elements.previewCsvBtn,
+    elements.confirmCsvImportBtn,
   ].forEach((btn) => {
     if (btn) btn.disabled = nextBusy;
   });
@@ -365,6 +394,22 @@ function normalizeMetric(value) {
   return METRIC_TYPES.includes(cleaned) ? cleaned : "QUIZ";
 }
 
+function normalizeMetrics(value) {
+  if (Array.isArray(value)) {
+    const valid = value.map((m) => normalizeMetric(m)).filter((m) => METRIC_TYPES.includes(m));
+    return valid.length ? valid : ["QUIZ"];
+  }
+  if (typeof value === "string" && value.trim()) return [normalizeMetric(value)];
+  return ["QUIZ"];
+}
+
+function normalizeThreshold(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 1 || n > 100) return null;
+  return Math.round(n * 10) / 10;
+}
+
 function classifyMetricFromName(name) {
   const n = String(name || "").toLowerCase();
   if (n.includes("quiz")) return "QUIZ";
@@ -382,11 +427,14 @@ function normalizeCourseConfigRows(rows) {
     const courseCode = normalizeCourseCode(row.course_code || row.courseCode);
     if (!faculty || !courseCode) return;
     const key = `${faculty}::${courseCode}`;
+    // chosen_metrics takes priority; fall back to legacy chosen_metric
+    const rawMetrics = row.chosen_metrics ?? row.chosenMetrics ?? row.chosen_metric ?? row.chosenMetric ?? ["QUIZ"];
     index.set(key, {
       faculty,
       course_code: courseCode,
       chosen_s: normalizeChosenS(row.chosen_s ?? row.chosenS ?? 1),
-      chosen_metric: normalizeMetric(row.chosen_metric ?? row.chosenMetric ?? "QUIZ"),
+      chosen_metrics: normalizeMetrics(rawMetrics),
+      threshold: normalizeThreshold(row.threshold ?? row.threshold ?? null),
     });
   });
   return [...index.values()].sort((a, b) => {
@@ -427,10 +475,12 @@ function renderCourseConfigTable() {
 
   if (!courseConfigRows.length) {
     elements.courseConfigTableBody.innerHTML =
-      '<tr><td colspan="5" style="text-align:center;color:#a8c2e2;">No courses configured yet. Add rows manually or extract from the grades file.</td></tr>';
+      '<tr><td colspan="6" style="text-align:center;color:#a8c2e2;">No courses configured yet. Add rows manually or extract from the grades file.</td></tr>';
     persistCourseConfigRows();
     return;
   }
+
+  const globalThreshold = String(elements.attainmentThreshold?.value || "70");
 
   const rowsHtml = courseConfigRows
     .map((row, index) => {
@@ -440,15 +490,28 @@ function renderCourseConfigTable() {
       const sSel = S_RANGE.map(
         (s) => `<option value="${s}"${row.chosen_s === s ? " selected" : ""}>S${s}</option>`
       ).join("");
-      const mSel = METRIC_TYPES.map(
-        (m) => `<option value="${m}"${row.chosen_metric === m ? " selected" : ""}>${m}</option>`
-      ).join("");
+
+      const metricPills = METRIC_TYPES.map((m) => {
+        const active = row.chosen_metrics.includes(m);
+        return `<button type="button"
+          class="metric-toggle${active ? " active" : ""}"
+          data-field="metric" data-index="${index}" data-metric="${m}"
+          title="${m}">${METRIC_SHORT[m] || m}</button>`;
+      }).join("");
+
+      const threshVal = row.threshold !== null && row.threshold !== undefined ? row.threshold : "";
 
       return `<tr>
         <td><select data-field="faculty" data-index="${index}">${facSel}</select></td>
         <td><input type="text" data-field="course_code" data-index="${index}" value="${escapeHtml(row.course_code)}" /></td>
         <td><select data-field="chosen_s" data-index="${index}">${sSel}</select></td>
-        <td><select data-field="chosen_metric" data-index="${index}">${mSel}</select></td>
+        <td class="metrics-cell"><div class="metric-pills">${metricPills}</div></td>
+        <td><input type="number" step="1" min="1" max="100"
+              data-field="threshold" data-index="${index}"
+              value="${threshVal}"
+              placeholder="${globalThreshold}"
+              class="threshold-input"
+              title="Per-course threshold %. Leave blank to use the global value (${globalThreshold}%)" /></td>
         <td class="remove-cell"><button type="button" class="remove-row-btn" data-field="remove" data-index="${index}">Remove</button></td>
       </tr>`;
     })
@@ -474,8 +537,8 @@ function handleCourseConfigTableChange(event) {
     target.value = row.course_code;
   } else if (field === "chosen_s") {
     row.chosen_s = normalizeChosenS(target.value);
-  } else if (field === "chosen_metric") {
-    row.chosen_metric = normalizeMetric(target.value);
+  } else if (field === "threshold") {
+    row.threshold = normalizeThreshold(target.value);
   }
 
   persistCourseConfigRows();
@@ -483,12 +546,34 @@ function handleCourseConfigTableChange(event) {
 
 function handleCourseConfigTableClick(event) {
   const target = event.target;
-  if (target?.dataset?.field !== "remove") return;
-  const index = Number.parseInt(target.dataset.index || "", 10);
-  if (!Number.isInteger(index) || index < 0 || index >= courseConfigRows.length) return;
-  courseConfigRows.splice(index, 1);
-  renderCourseConfigTable();
-  setCourseConfigStatus("Row removed.", "info");
+  const field = target?.dataset?.field;
+  const index = Number.parseInt(target?.dataset?.index || "", 10);
+
+  if (field === "metric") {
+    if (!Number.isInteger(index) || index < 0 || index >= courseConfigRows.length) return;
+    const metric = target.dataset.metric;
+    const row = courseConfigRows[index];
+    const set = new Set(row.chosen_metrics);
+    if (target.classList.contains("active")) {
+      if (set.size > 1) { // always keep at least one metric selected
+        set.delete(metric);
+        target.classList.remove("active");
+      }
+    } else {
+      set.add(metric);
+      target.classList.add("active");
+    }
+    row.chosen_metrics = [...set];
+    persistCourseConfigRows();
+    return;
+  }
+
+  if (field === "remove") {
+    if (!Number.isInteger(index) || index < 0 || index >= courseConfigRows.length) return;
+    courseConfigRows.splice(index, 1);
+    renderCourseConfigTable();
+    setCourseConfigStatus("Row removed.", "info");
+  }
 }
 
 // ── Extract courses from uploaded file ──────────────────────────────────────
@@ -563,7 +648,8 @@ function extractCourseEntriesFromRows(rows, defaultFaculty = "") {
         faculty: faculty || "CSE",
         course_code: courseCode,
         chosen_s: 1,
-        chosen_metric: metricHint,
+        chosen_metrics: [metricHint],
+        threshold: null,
       });
     }
   });
@@ -584,11 +670,13 @@ function mergeCourseConfigRows(incomingRows) {
     if (!faculty || !courseCode) return;
     const key = `${faculty}::${courseCode}`;
     if (!index.has(key)) {
+      const rawM = incoming.chosen_metrics ?? incoming.chosen_metric ?? ["QUIZ"];
       index.set(key, {
         faculty,
         course_code: courseCode,
         chosen_s: normalizeChosenS(incoming.chosen_s ?? 1),
-        chosen_metric: normalizeMetric(incoming.chosen_metric ?? "QUIZ"),
+        chosen_metrics: normalizeMetrics(rawM),
+        threshold: normalizeThreshold(incoming.threshold ?? null),
       });
     }
   });
@@ -644,9 +732,15 @@ async function saveCourseConfig() {
   const config = readConfig();
   ensureApiAccess(config);
 
-  const courses = normalizeCourseConfigRows(courseConfigRows).filter(
-    (r) => r.faculty && r.course_code
-  );
+  const courses = normalizeCourseConfigRows(courseConfigRows)
+    .filter((r) => r.faculty && r.course_code)
+    .map((r) => ({
+      faculty: r.faculty,
+      course_code: r.course_code,
+      chosen_s: r.chosen_s,
+      chosen_metrics: r.chosen_metrics,
+      threshold: r.threshold,
+    }));
   if (!courses.length) throw new Error("Add at least one course row before saving.");
 
   setCourseConfigStatus(`Saving ${courses.length} course configuration(s)...`, "info");
@@ -973,15 +1067,21 @@ function renderFacultyResults(payload) {
             c.average_score !== null && c.average_score !== undefined
               ? `${Number(c.average_score).toFixed(1)}%`
               : "—";
-          // Mark cross-faculty courses
           const isMultiFac = crossCourses.some((x) => x.courseCode === c.course_code);
           const multiBadge = isMultiFac
             ? `<span class="multi-faculty-badge" title="This course appears in multiple faculties">multi</span>`
             : "";
+          const metricsDisplay = Array.isArray(c.chosen_metrics)
+            ? c.chosen_metrics.map((m) => `<span class="metric-chip">${METRIC_SHORT[m] || m}</span>`).join("")
+            : escapeHtml(c.chosen_metrics || "");
+          const thresholdDisplay = c.threshold !== null && c.threshold !== undefined
+            ? `<span class="threshold-chip" title="Per-course threshold">${c.threshold}%</span>`
+            : `<span class="threshold-chip global" title="Using global threshold">${Number(c.effective_threshold || threshold).toFixed(0)}%</span>`;
           return `<tr>
             <td>${escapeHtml(c.course_code)}${multiBadge}</td>
             <td>${escapeHtml(c.s_label || `S${c.chosen_s}`)}</td>
-            <td>${escapeHtml(c.chosen_metric)}</td>
+            <td class="metrics-display-cell">${metricsDisplay}</td>
+            <td>${thresholdDisplay}</td>
             <td>${avgDisplay}</td>
             <td>${Number(c.attainment_rate).toFixed(1)}%</td>
             <td>${c.students_attained} / ${c.students_assessed}</td>
@@ -1002,8 +1102,9 @@ function renderFacultyResults(payload) {
             <thead>
               <tr>
                 <th>Course</th>
-                <th>Chosen S</th>
-                <th>Metric</th>
+                <th>S</th>
+                <th>Metrics</th>
+                <th>Threshold</th>
                 <th>Avg Score</th>
                 <th>Attainment %</th>
                 <th>Students</th>
@@ -1502,6 +1603,374 @@ function exportPdfReport() {
   elements.metricReport.textContent = "PDF Ready";
 }
 
+// ── Faculty Manager ───────────────────────────────────────────────────────────
+
+function setFacultyManagerStatus(message, level = "info") {
+  if (!elements.facultyManagerStatus) return;
+  elements.facultyManagerStatus.textContent = message;
+  elements.facultyManagerStatus.classList.remove("level-info", "level-success", "level-error");
+  elements.facultyManagerStatus.classList.add(`level-${level}`);
+}
+
+function syncFacultiesDropdowns() {
+  const sel = elements.program;
+  if (sel) {
+    const current = sel.value;
+    // Remove all options after AUTO
+    while (sel.options.length > 1) sel.remove(1);
+    FACULTIES.forEach((code) => {
+      const opt = new Option(code, code);
+      sel.add(opt);
+    });
+    if (current !== "AUTO" && FACULTIES.includes(current)) sel.value = current;
+  }
+  if (courseConfigRows.length) renderCourseConfigTable();
+}
+
+async function loadFacultiesFromApi(config) {
+  config = config || readConfig();
+  if (!config.baseUrl || !config.apiKey) return;
+
+  const result = await requestJson(`${config.baseUrl}/faculties?include_inactive=true`, {
+    method: "GET",
+    headers: { "x-api-key": config.apiKey },
+  });
+  const payload = unwrapPayload(result);
+  facultyRows = payload.faculties || [];
+  FACULTIES = facultyRows.filter((f) => f.active).map((f) => f.code);
+  syncFacultiesDropdowns();
+  renderFacultyTable();
+  return payload;
+}
+
+function renderFacultyTable() {
+  const tbody = elements.facultyTableBody;
+  if (!tbody) return;
+
+  if (!facultyRows.length) {
+    tbody.innerHTML =
+      '<tr><td colspan="5" style="text-align:center;color:#a8c2e2;">No faculties found. Click Refresh or Import CSV.</td></tr>';
+    return;
+  }
+
+  const statsActive = facultyRows.filter((f) => f.active).length;
+  const statsInactive = facultyRows.length - statsActive;
+  if (elements.facultyManagerStatus && !elements.facultyManagerStatus.textContent.startsWith("Working")) {
+    setFacultyManagerStatus(
+      `${facultyRows.length} total · ${statsActive} active · ${statsInactive} inactive`,
+      "success"
+    );
+  }
+
+  tbody.innerHTML = facultyRows
+    .map((f) => {
+      const statusBadge = f.active
+        ? `<span class="badge badge-success">Active</span>`
+        : `<span class="badge badge-danger">Inactive</span>`;
+      const toggleLabel = f.active ? "Deactivate" : "Reactivate";
+      const toggleClass = f.active ? "faculty-action-deactivate" : "faculty-action-reactivate";
+      return `<tr class="${f.active ? "" : "faculty-row-inactive"}">
+        <td><strong>${escapeHtml(f.code)}</strong></td>
+        <td>${escapeHtml(f.name) || `<em style="opacity:.5">—</em>`}</td>
+        <td>${escapeHtml(f.description) || `<em style="opacity:.5">—</em>`}</td>
+        <td>${statusBadge}</td>
+        <td class="faculty-actions-cell">
+          <button class="btn faculty-action-edit" data-code="${escapeHtml(f.code)}">Edit</button>
+          <button class="btn ${toggleClass}" data-code="${escapeHtml(f.code)}">${toggleLabel}</button>
+          <button class="btn faculty-action-delete" data-code="${escapeHtml(f.code)}">Delete</button>
+        </td>
+      </tr>`;
+    })
+    .join("");
+}
+
+function openFacultyEditForm(targetCode) {
+  facultyEditTarget = targetCode || null;
+  if (targetCode) {
+    const existing = facultyRows.find((f) => f.code === targetCode);
+    elements.facultyEditTitle.textContent = `Edit: ${targetCode}`;
+    elements.facultyEditCode.value = existing?.code || "";
+    elements.facultyEditCode.disabled = true;
+    elements.facultyEditName.value = existing?.name || "";
+    elements.facultyEditDescription.value = existing?.description || "";
+  } else {
+    elements.facultyEditTitle.textContent = "New Faculty";
+    elements.facultyEditCode.value = "";
+    elements.facultyEditCode.disabled = false;
+    elements.facultyEditName.value = "";
+    elements.facultyEditDescription.value = "";
+  }
+  elements.facultyEditForm.classList.remove("hidden");
+  elements.facultyEditCode.focus();
+}
+
+function closeFacultyEditForm() {
+  facultyEditTarget = null;
+  elements.facultyEditForm.classList.add("hidden");
+}
+
+function openCsvImportWidget() {
+  elements.facultyCsvImportWidget.classList.remove("hidden");
+  elements.facultyCsvPreviewArea.classList.add("hidden");
+  elements.confirmCsvImportBtn.classList.add("hidden");
+  if (elements.facultyCsvFileInput) elements.facultyCsvFileInput.value = "";
+  csvParsedRows = null;
+}
+
+function closeCsvImportWidget() {
+  elements.facultyCsvImportWidget.classList.add("hidden");
+  csvParsedRows = null;
+}
+
+function splitCsvLine(line) {
+  const result = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+      else inQuotes = !inQuotes;
+    } else if (ch === "," && !inQuotes) {
+      result.push(current);
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  result.push(current);
+  return result;
+}
+
+function parseFacultyCsv(text) {
+  const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").filter((l) => l.trim());
+  if (!lines.length) throw new Error("CSV file is empty.");
+
+  const headerLine = lines[0].replace(/^﻿/, "");
+  const headers = headerLine.split(",").map((h) => h.trim().toLowerCase().replace(/['"]/g, ""));
+
+  const codeIdx = headers.findIndex((h) => ["code", "faculty_code", "faculty"].includes(h));
+  const nameIdx = headers.findIndex((h) => ["name", "faculty_name"].includes(h));
+  const descIdx = headers.findIndex((h) => ["description", "desc"].includes(h));
+
+  if (codeIdx === -1) throw new Error('CSV must have a "code" column (also accepted: "faculty_code", "faculty").');
+
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cells = splitCsvLine(lines[i]);
+    const code = (cells[codeIdx] || "").trim().toUpperCase();
+    if (!code) continue;
+    rows.push({
+      row: i,
+      code,
+      name: nameIdx !== -1 ? (cells[nameIdx] || "").trim() : "",
+      description: descIdx !== -1 ? (cells[descIdx] || "").trim() : "",
+    });
+  }
+  return rows;
+}
+
+async function previewFacultyCsv() {
+  const file = elements.facultyCsvFileInput?.files?.[0];
+  if (!file) {
+    setFacultyManagerStatus("Choose a CSV file first.", "error");
+    return;
+  }
+
+  let parsedRows;
+  try {
+    const text = await file.text();
+    parsedRows = parseFacultyCsv(text);
+  } catch (err) {
+    setFacultyManagerStatus(err.message, "error");
+    elements.facultyCsvPreviewArea.innerHTML = `<p class="faculty-csv-error">${escapeHtml(err.message)}</p>`;
+    elements.facultyCsvPreviewArea.classList.remove("hidden");
+    return;
+  }
+
+  const CODE_RE = /^[A-Z0-9]{1,20}$/;
+  const validRows = [];
+  const errorRows = [];
+  const seen = new Set();
+
+  for (const r of parsedRows) {
+    if (!CODE_RE.test(r.code)) {
+      errorRows.push({ ...r, issue: "Invalid code format" });
+    } else if (seen.has(r.code)) {
+      errorRows.push({ ...r, issue: "Duplicate code in CSV" });
+    } else {
+      seen.add(r.code);
+      validRows.push(r);
+    }
+  }
+
+  csvParsedRows = validRows;
+
+  const validHtml = validRows
+    .map(
+      (r) =>
+        `<tr><td>${escapeHtml(r.code)}</td><td>${escapeHtml(r.name) || "—"}</td><td>${escapeHtml(r.description) || "—"}</td><td><span class="badge badge-success">Valid</span></td></tr>`
+    )
+    .join("");
+  const errorHtml = errorRows
+    .map(
+      (r) =>
+        `<tr class="csv-error-row"><td>${escapeHtml(r.code || "(empty)")}</td><td>${escapeHtml(r.name) || "—"}</td><td>—</td><td><span class="badge badge-danger">${escapeHtml(r.issue)}</span></td></tr>`
+    )
+    .join("");
+
+  elements.facultyCsvPreviewArea.innerHTML = `
+    <div class="faculty-csv-stats">
+      <span class="badge badge-success">${validRows.length} valid</span>
+      ${errorRows.length ? `<span class="badge badge-danger">${errorRows.length} errors</span>` : ""}
+    </div>
+    <div class="mapping-table-wrap" style="max-height:260px;overflow:auto;margin-top:8px;">
+      <table class="mapping-table" style="min-width:500px;">
+        <thead><tr><th>Code</th><th>Name</th><th>Description</th><th>Status</th></tr></thead>
+        <tbody>${validHtml}${errorHtml}</tbody>
+      </table>
+    </div>`;
+  elements.facultyCsvPreviewArea.classList.remove("hidden");
+
+  if (validRows.length > 0) {
+    elements.confirmCsvImportBtn.classList.remove("hidden");
+    setFacultyManagerStatus(
+      `Preview: ${validRows.length} row(s) ready to import, ${errorRows.length} skipped.`,
+      "info"
+    );
+  } else {
+    elements.confirmCsvImportBtn.classList.add("hidden");
+    setFacultyManagerStatus("No valid rows to import.", "error");
+  }
+}
+
+async function confirmFacultyCsvImport() {
+  if (!csvParsedRows || !csvParsedRows.length) return;
+  const config = readConfig();
+  ensureApiAccess(config);
+
+  setFacultyManagerStatus(`Importing ${csvParsedRows.length} facult${csvParsedRows.length > 1 ? "ies" : "y"}…`, "info");
+
+  const result = await requestJson(`${config.baseUrl}/faculties/import`, {
+    method: "POST",
+    headers: { "x-api-key": config.apiKey, "Content-Type": "application/json" },
+    body: JSON.stringify({ rows: csvParsedRows, preview: false }),
+  });
+
+  const payload = unwrapPayload(result);
+  closeCsvImportWidget();
+  appendLog(`Faculty CSV import: ${payload.imported_count} rows (${payload.created} created, ${payload.updated} updated)`, "ok");
+  await loadFacultiesFromApi(config);
+  setFacultyManagerStatus(
+    `Import complete: ${payload.created} created, ${payload.updated} updated, ${payload.error_count} skipped.`,
+    "success"
+  );
+}
+
+async function saveFacultyEdit() {
+  const config = readConfig();
+  ensureApiAccess(config);
+
+  const code = String(elements.facultyEditCode.value || "").trim().toUpperCase();
+  const name = String(elements.facultyEditName.value || "").trim();
+  const description = String(elements.facultyEditDescription.value || "").trim();
+
+  if (!code) { setFacultyManagerStatus("Code is required.", "error"); return; }
+  if (!/^[A-Z0-9]{1,20}$/.test(code)) {
+    setFacultyManagerStatus("Code must be 1–20 uppercase letters or digits.", "error");
+    return;
+  }
+
+  setFacultyManagerStatus(`${facultyEditTarget ? "Updating" : "Creating"} faculty ${code}…`, "info");
+
+  try {
+    let payload;
+    if (facultyEditTarget) {
+      const qs = new URLSearchParams({ code: facultyEditTarget });
+      const result = await requestJson(`${config.baseUrl}/faculties?${qs}`, {
+        method: "PATCH",
+        headers: { "x-api-key": config.apiKey, "Content-Type": "application/json" },
+        body: JSON.stringify({ name, description }),
+      });
+      payload = unwrapPayload(result);
+      appendLog(`Faculty updated: ${facultyEditTarget}`, "ok");
+    } else {
+      const result = await requestJson(`${config.baseUrl}/faculties`, {
+        method: "POST",
+        headers: { "x-api-key": config.apiKey, "Content-Type": "application/json" },
+        body: JSON.stringify({ code, name, description }),
+      });
+      payload = unwrapPayload(result);
+      appendLog(`Faculty created: ${code}`, "ok");
+    }
+    if (payload.warning) appendLog(`Warning: ${payload.warning}`, "warn");
+    closeFacultyEditForm();
+    await loadFacultiesFromApi(config);
+  } catch (err) {
+    setFacultyManagerStatus(err.message, "error");
+    appendLog(`Faculty save failed: ${err.message}`, "error");
+  }
+}
+
+async function handleFacultyTableClick(event) {
+  const btn = event.target.closest("button[data-code]");
+  if (!btn) return;
+  const code = btn.dataset.code;
+  if (!code) return;
+
+  const config = readConfig();
+
+  if (btn.classList.contains("faculty-action-edit")) {
+    openFacultyEditForm(code);
+    return;
+  }
+
+  if (btn.classList.contains("faculty-action-deactivate") || btn.classList.contains("faculty-action-reactivate")) {
+    const newActive = btn.classList.contains("faculty-action-reactivate");
+    setFacultyManagerStatus(`${newActive ? "Reactivating" : "Deactivating"} ${code}…`, "info");
+    try {
+      ensureApiAccess(config);
+      const qs = new URLSearchParams({ code });
+      const result = await requestJson(`${config.baseUrl}/faculties?${qs}`, {
+        method: "PATCH",
+        headers: { "x-api-key": config.apiKey, "Content-Type": "application/json" },
+        body: JSON.stringify({ active: newActive }),
+      });
+      const payload = unwrapPayload(result);
+      if (payload.warning) appendLog(`Warning: ${payload.warning}`, "warn");
+      appendLog(`Faculty ${code} ${newActive ? "reactivated" : "deactivated"}.`, "ok");
+      await loadFacultiesFromApi(config);
+    } catch (err) {
+      setFacultyManagerStatus(err.message, "error");
+      appendLog(`Toggle failed: ${err.message}`, "error");
+    }
+    return;
+  }
+
+  if (btn.classList.contains("faculty-action-delete")) {
+    const confirmed = window.confirm(
+      `Soft-delete faculty "${code}"?\n\nExisting grade and config data will be preserved.\nThe faculty will be hidden from all dropdowns.`
+    );
+    if (!confirmed) return;
+    setFacultyManagerStatus(`Soft-deleting ${code}…`, "info");
+    try {
+      ensureApiAccess(config);
+      const qs = new URLSearchParams({ code });
+      const result = await requestJson(`${config.baseUrl}/faculties?${qs}`, {
+        method: "DELETE",
+        headers: { "x-api-key": config.apiKey },
+      });
+      const payload = unwrapPayload(result);
+      if (payload.warning) appendLog(`Warning: ${payload.warning}`, "warn");
+      appendLog(`Faculty deleted (soft): ${code}`, "ok");
+      await loadFacultiesFromApi(config);
+    } catch (err) {
+      setFacultyManagerStatus(err.message, "error");
+      appendLog(`Delete failed: ${err.message}`, "error");
+    }
+  }
+}
+
 // ── Event wiring ──────────────────────────────────────────────────────────────
 
 function wireEvents() {
@@ -1559,10 +2028,11 @@ function wireEvents() {
     elements.addCourseRowBtn.addEventListener("click", () => {
       if (busy) return;
       courseConfigRows.push({
-        faculty: normalizeFaculty(elements.program?.value || "CSE"),
+        faculty: normalizeFaculty(elements.program?.value || (FACULTIES[0] || "CSE")),
         course_code: "",
         chosen_s: 1,
-        chosen_metric: "QUIZ",
+        chosen_metrics: ["QUIZ"],
+        threshold: null,
       });
       renderCourseConfigTable();
       setCourseConfigStatus("New row added.", "info");
@@ -1595,6 +2065,49 @@ function wireEvents() {
   elements.clearLogsBtn.addEventListener("click", () => {
     elements.logConsole.textContent = "";
   });
+
+  // ── Faculty Manager events ────────────────────────────────────────────────
+  if (elements.loadFacultiesBtn) {
+    elements.loadFacultiesBtn.addEventListener("click", async () => {
+      setFacultyManagerStatus("Refreshing…", "info");
+      try {
+        const payload = await loadFacultiesFromApi();
+        setFacultyManagerStatus(`${payload.count} facult${payload.count !== 1 ? "ies" : "y"} loaded.`, "success");
+        appendLog(`Faculty list refreshed: ${payload.count} row(s)`, "ok");
+      } catch (err) {
+        setFacultyManagerStatus(err.message, "error");
+      }
+    });
+  }
+
+  if (elements.addFacultyRowBtn) {
+    elements.addFacultyRowBtn.addEventListener("click", () => openFacultyEditForm(null));
+  }
+  if (elements.cancelFacultyEditBtn) {
+    elements.cancelFacultyEditBtn.addEventListener("click", closeFacultyEditForm);
+  }
+  if (elements.saveFacultyEditBtn) {
+    elements.saveFacultyEditBtn.addEventListener("click", saveFacultyEdit);
+  }
+  if (elements.importCsvFacultyBtn) {
+    elements.importCsvFacultyBtn.addEventListener("click", openCsvImportWidget);
+  }
+  if (elements.closeCsvImportBtn) {
+    elements.closeCsvImportBtn.addEventListener("click", closeCsvImportWidget);
+  }
+  if (elements.previewCsvBtn) {
+    elements.previewCsvBtn.addEventListener("click", previewFacultyCsv);
+  }
+  if (elements.confirmCsvImportBtn) {
+    elements.confirmCsvImportBtn.addEventListener("click", async () => {
+      try { await confirmFacultyCsvImport(); } catch (err) {
+        setFacultyManagerStatus(err.message, "error");
+      }
+    });
+  }
+  if (elements.facultyTableBody) {
+    elements.facultyTableBody.addEventListener("click", handleFacultyTableClick);
+  }
 
   // Faculty filter pill clicks
   if (elements.facultyFilterPills) {
@@ -1633,7 +2146,7 @@ function wireEvents() {
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
-function bootstrap() {
+async function bootstrap() {
   restoreConfig();
   restoreCourseConfigRows();
   renderCourseConfigTable();
@@ -1643,8 +2156,22 @@ function bootstrap() {
   );
   resetStates();
   clearOutputs();
-  appendLog("Dashboard ready. Configure courses and run the workflow.");
+  appendLog("Dashboard ready. Loading faculties from server…");
   wireEvents();
+
+  try {
+    const payload = await loadFacultiesFromApi();
+    const n = payload?.count ?? FACULTIES.length;
+    appendLog(`Loaded ${n} facult${n !== 1 ? "ies" : "y"} from server.`, "ok");
+  } catch {
+    // Graceful fallback — app is fully usable with the default hardcoded list
+    syncFacultiesDropdowns();
+    appendLog("Could not reach /faculties API. Using default faculty list.", "warn");
+    setFacultyManagerStatus(
+      "Could not load faculties from server. Using defaults — click Refresh after n8n starts.",
+      "error"
+    );
+  }
 }
 
 bootstrap();
